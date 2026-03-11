@@ -186,28 +186,28 @@ export function AchievementsGrid() {
                   : 'bg-[#0F0F12] border-white/5 opacity-60 grayscale'
               }`}
               style={isUnlocked ? { 
-                borderColor: achievement.type === 'level' ? 'rgba(255, 218, 31, 0.3)' : `${categories.find(c => c.name === achievement.category)?.color}4D` || 'rgba(255, 255, 255, 0.1)'
+                borderColor: achievement.type === 'level' ? 'rgba(255, 218, 31, 0.3)' : `${categories.find(c => c.id === achievement.category)?.color}4D` || 'rgba(255, 255, 255, 0.1)'
               } : {}}
             >
               {/* Background Glow & Shimmer */}
               {isUnlocked && (
                 <>
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ 
-                      opacity: [0.4, 0.8, 0.4],
-                      scale: [1, 1.3, 1]
-                    }}
-                    transition={{
-                      duration: 5,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                    className="absolute -top-10 -right-10 w-32 h-32 blur-3xl rounded-full transition-all duration-500" 
-                    style={{ 
-                      backgroundColor: achievement.type === 'level' ? 'rgba(255, 218, 31, 0.15)' : `${categories.find(c => c.name === achievement.category)?.color}26` || 'rgba(255, 255, 255, 0.05)'
-                    }}
-                  />
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ 
+                        opacity: [0.4, 0.8, 0.4],
+                        scale: [1, 1.3, 1]
+                      }}
+                      transition={{
+                        duration: 5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                      className="absolute -top-10 -right-10 w-32 h-32 blur-3xl rounded-full transition-all duration-500" 
+                      style={{ 
+                        backgroundColor: achievement.type === 'level' ? 'rgba(255, 218, 31, 0.15)' : `${categories.find(c => c.id === achievement.category)?.color}26` || 'rgba(255, 255, 255, 0.05)'
+                      }}
+                    />
                   <motion.div
                     animate={{
                       x: ['-100%', '200%'],
@@ -229,9 +229,9 @@ export function AchievementsGrid() {
                     animate={isUnlocked ? {
                       scale: [1, 1.08, 1],
                       filter: [
-                        `drop-shadow(0 0 4px ${achievement.type === 'level' ? 'rgba(255, 218, 31, 0.3)' : (categories.find(c => c.name === achievement.category)?.color || 'rgba(255, 255, 255, 0.1)') + '4D'})`,
-                        `drop-shadow(0 0 20px ${achievement.type === 'level' ? 'rgba(255, 218, 31, 0.7)' : (categories.find(c => c.name === achievement.category)?.color || 'rgba(255, 255, 255, 0.3)') + 'B3'})`,
-                        `drop-shadow(0 0 4px ${achievement.type === 'level' ? 'rgba(255, 218, 31, 0.3)' : (categories.find(c => c.name === achievement.category)?.color || 'rgba(255, 255, 255, 0.1)') + '4D'})`
+                        `drop-shadow(0 0 4px ${achievement.type === 'level' ? 'rgba(255, 218, 31, 0.3)' : (categories.find(c => c.id === achievement.category)?.color || 'rgba(255, 255, 255, 0.1)') + '4D'})`,
+                        `drop-shadow(0 0 20px ${achievement.type === 'level' ? 'rgba(255, 218, 31, 0.7)' : (categories.find(c => c.id === achievement.category)?.color || 'rgba(255, 255, 255, 0.3)') + 'B3'})`,
+                        `drop-shadow(0 0 4px ${achievement.type === 'level' ? 'rgba(255, 218, 31, 0.3)' : (categories.find(c => c.id === achievement.category)?.color || 'rgba(255, 255, 255, 0.1)') + '4D'})`
                       ]
                     } : {}}
                     transition={isUnlocked ? {
@@ -252,8 +252,8 @@ export function AchievementsGrid() {
                   style={isUnlocked ? {
                     background: achievement.type === 'level' 
                       ? 'linear-gradient(to bottom right, #FFDA1F, #F74C00)' 
-                      : `linear-gradient(to bottom right, ${categories.find(c => c.name === achievement.category)?.color || '#F74C00'}, ${categories.find(c => c.name === achievement.category)?.secondaryColor || categories.find(c => c.name === achievement.category)?.color || '#F74C00'})`,
-                    boxShadow: achievement.type === 'level' ? '0 10px 15px -3px rgba(255, 218, 31, 0.2)' : `0 10px 15px -3px ${categories.find(c => c.name === achievement.category)?.color}33`
+                      : `linear-gradient(to bottom right, ${categories.find(c => c.id === achievement.category)?.color || '#F74C00'}, ${categories.find(c => c.id === achievement.category)?.secondaryColor || categories.find(c => c.id === achievement.category)?.color || '#F74C00'})`,
+                    boxShadow: achievement.type === 'level' ? '0 10px 15px -3px rgba(255, 218, 31, 0.2)' : `0 10px 15px -3px ${categories.find(c => c.id === achievement.category)?.color}33`
                   } : {}}
                   >
                     {isUnlocked ? (
@@ -293,17 +293,17 @@ export function AchievementsGrid() {
                     className={`text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-full border transition-colors`}
                     style={{ 
                       backgroundColor: isUnlocked 
-                        ? (achievement.type === 'level' ? 'rgba(255, 218, 31, 0.1)' : `${categories.find(c => c.name === achievement.category)?.color}1A` || 'rgba(255, 255, 255, 0.05)')
+                        ? (achievement.type === 'level' ? 'rgba(255, 218, 31, 0.1)' : `${categories.find(c => c.id === achievement.category)?.color}1A` || 'rgba(255, 255, 255, 0.05)')
                         : 'rgba(255, 255, 255, 0.05)',
                       borderColor: isUnlocked
-                        ? (achievement.type === 'level' ? 'rgba(255, 218, 31, 0.2)' : `${categories.find(c => c.name === achievement.category)?.color}33` || 'rgba(255, 255, 255, 0.05)')
+                        ? (achievement.type === 'level' ? 'rgba(255, 218, 31, 0.2)' : `${categories.find(c => c.id === achievement.category)?.color}33` || 'rgba(255, 255, 255, 0.05)')
                         : 'rgba(255, 255, 255, 0.05)',
                       color: isUnlocked
-                        ? (achievement.type === 'level' ? '#FFDA1F' : categories.find(c => c.name === achievement.category)?.color || '#9ca3af')
+                        ? (achievement.type === 'level' ? '#FFDA1F' : categories.find(c => c.id === achievement.category)?.color || '#9ca3af')
                         : '#4b5563'
                     }}
                   >
-                    {achievement.category}
+                    {categories.find(c => c.id === achievement.category)?.name || achievement.category}
                   </span>
                 </div>
 
@@ -334,7 +334,7 @@ export function AchievementsGrid() {
                         scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
                       }}
                       className="flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-tighter"
-                      style={{ color: achievement.type === 'level' ? '#FFDA1F' : categories.find(c => c.name === achievement.category)?.color || '#F74C00' }}
+                      style={{ color: achievement.type === 'level' ? '#FFDA1F' : categories.find(c => c.id === achievement.category)?.color || '#F74C00' }}
                     >
                       <Zap size={10} className="animate-pulse" />
                       Desbloqueado

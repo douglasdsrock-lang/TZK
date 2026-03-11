@@ -134,6 +134,10 @@ export function StudentManagement() {
   const adminStudent = students.find(s => s.email === user?.email);
 
   const onSubmit = async (data: StudentFormValues) => {
+    if (!editingStudent && data.password && data.password.length < 6) {
+      alert('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
     try {
       const payload = {
         first_name: data.firstName,
@@ -154,37 +158,26 @@ export function StudentManagement() {
           .eq('id', editingStudent.id);
         if (error) throw error;
       } else {
-        // 1. Create Auth User
-        if (data.password) {
-          const { error: authError } = await supabase.auth.signUp({
+        // Use our new API route to create student without hijacking session
+        const response = await fetch('/api/admin/create-student', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             email: data.email,
             password: data.password,
-            options: {
-              data: {
-                full_name: `${data.firstName} ${data.lastName}`,
-              }
-            }
-          });
-          
-          if (authError) {
-            console.warn('Auth creation warning:', authError.message);
-          }
-        }
+            fullName: `${data.firstName} ${data.lastName}`,
+            studentData: payload
+          })
+        });
 
-        // 2. Create Student Record
-        const { error } = await supabase
-          .from('students')
-          .insert([{ 
-            ...payload, 
-            level: 1, 
-            achievements: [],
-            created_at: new Date().toISOString()
-          }]);
-        if (error) throw error;
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Erro ao criar aluno');
       }
       closeModal();
-    } catch (err) {
-      console.error('Error saving student:', err);
+    } catch (err: any) {
+      const errorMessage = err.message || JSON.stringify(err);
+      console.error('Error saving student details:', errorMessage);
+      alert(`Erro ao salvar aluno: ${errorMessage}`);
     }
   };
 
@@ -263,8 +256,8 @@ export function StudentManagement() {
     setValue('password', pass);
   };
 
-  const openModal = (student: any = null) => {
-    setEditingStudent(student);
+  const openModal = (student: any = null, isEdit: boolean = false) => {
+    setEditingStudent(isEdit ? student : null);
     if (student) {
       reset({
         firstName: student.firstName,
@@ -301,20 +294,21 @@ export function StudentManagement() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-3xl font-display font-black tracking-tight">GESTÃO DE ALUNOS</h2>
-          <p className="text-gray-500 mt-1">Gerencie jogadores, atribua conquistas e acompanhe o progresso.</p>
+      <div className="flex flex-row items-center justify-between gap-4">
+        <div className="flex-1">
+          <h2 className="text-2xl md:text-3xl font-display font-black tracking-tight">GESTÃO DE ALUNOS</h2>
+          <p className="text-gray-500 mt-1 text-xs md:text-sm hidden sm:block">Gerencie jogadores, atribua conquistas e acompanhe o progresso.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           {isAdmin && (
             adminStudent ? (
               <button 
                 onClick={() => setIsAssigningAchievements(adminStudent)}
-                className="bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 border border-white/10"
+                className="bg-white/5 hover:bg-white/10 text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 border border-white/10 text-[10px] md:text-sm whitespace-nowrap"
               >
-                <Trophy size={20} className="text-[#F74C00]" />
-                MINHAS CONQUISTAS (ADM)
+                <Trophy size={16} className="text-[#F74C00]" />
+                <span className="hidden xs:inline">MINHAS CONQUISTAS</span>
+                <span className="xs:hidden">CONQUISTAS</span>
               </button>
             ) : (
               <button 
@@ -327,19 +321,19 @@ export function StudentManagement() {
                   gender: 'male',
                   status: 'active'
                 })}
-                className="bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 border border-white/10"
+                className="bg-white/5 hover:bg-white/10 text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 border border-white/10 text-[10px] md:text-sm whitespace-nowrap"
               >
-                <User size={20} className="text-[#F74C00]" />
-                ATIVAR MEU PERFIL DE JOGADOR
+                <User size={16} className="text-[#F74C00]" />
+                ATIVAR PERFIL
               </button>
             )
           )}
           <button 
             onClick={() => openModal()}
-            className="bg-[#F74C00] hover:bg-[#ff5a14] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-500/20"
+            className="bg-[#F74C00] hover:bg-[#ff5a14] text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-500/20 text-[10px] md:text-sm whitespace-nowrap"
           >
-            <Plus size={20} />
-            ADICIONAR NOVO ALUNO
+            <Plus size={16} />
+            ADICIONAR ALUNO
           </button>
         </div>
       </div>
@@ -362,18 +356,17 @@ export function StudentManagement() {
         </button>
       </div>
 
-      {/* Table */}
       <div className="bg-[#151518] border border-white/5 rounded-3xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.02]">
-                <th className="px-6 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">Aluno</th>
-                <th className="px-6 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">Turma</th>
-                <th className="px-6 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">Nível</th>
-                <th className="px-6 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">Conquistas</th>
-                <th className="px-6 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest text-right">Ações</th>
+                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Aluno</th>
+                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Turma</th>
+                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Nível</th>
+                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Conquistas</th>
+                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Status</th>
+                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest text-right whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -392,71 +385,70 @@ export function StudentManagement() {
               ) : (
                 filteredStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <StudentAvatar 
-                          src={student.profilePhoto}
-                          firstName={student.firstName}
-                          lastName={student.lastName}
-                          gender={student.gender}
-                        />
-                        <div>
-                          <p className="font-bold text-white">{student.firstName} {student.lastName}</p>
-                          <p className="text-[10px] text-gray-500 font-mono">{student.email}</p>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="hidden sm:block">
+                          <StudentAvatar 
+                            src={student.profilePhoto}
+                            firstName={student.firstName}
+                            lastName={student.lastName}
+                            gender={student.gender}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-white text-xs md:text-sm truncate">{student.firstName} {student.lastName}</p>
+                          <p className="text-[9px] md:text-[10px] text-gray-500 font-mono truncate">{student.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-xs font-semibold text-gray-300">
+                    <td className="px-4 py-4">
+                      <span className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[10px] md:text-xs font-semibold text-gray-300 whitespace-nowrap">
                         {student.class}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-[#FFDA1F]/10 flex items-center justify-center text-[#FFDA1F] text-xs font-black">
+                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-[#FFDA1F]/10 flex items-center justify-center text-[#FFDA1F] text-[10px] md:text-xs font-black">
                           {student.level}
                         </div>
-                        <div className="w-24 h-1.5 bg-[#0A0A0B] rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-[#F74C00] to-[#FFDA1F]" style={{ width: `${student.experience}%` }}></div>
+                        <div className="w-12 lg:w-24 h-1 bg-[#0A0A0B] rounded-full overflow-hidden hidden lg:block">
+                          <div className="h-full bg-gradient-to-r from-[#F74C00] to-[#FFDA1F]" style={{ width: `${Math.min(100, (student.level || 0) * 10)}%` }}></div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <button 
                         onClick={() => setIsAssigningAchievements(student)}
-                        className="flex items-center gap-2 text-xs font-bold text-[#F74C00] hover:underline"
+                        className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs font-bold text-[#F74C00] hover:underline whitespace-nowrap"
                       >
-                        <Trophy size={14} />
-                        {student.achievements?.length || 0} Desbloqueadas
+                        <Trophy size={12} />
+                        {student.achievements?.length || 0} <span className="hidden sm:inline">Conquistas</span>
                       </button>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
                         student.status === 'active' ? "bg-emerald-500/10 text-emerald-500" : "bg-gray-500/10 text-gray-500"
                       )}>
-                        <span className={cn("w-1.5 h-1.5 rounded-full", student.status === 'active' ? "bg-emerald-500" : "bg-gray-500")}></span>
+                        <span className={cn("w-1 h-1 rounded-full", student.status === 'active' ? "bg-emerald-500" : "bg-gray-500")}></span>
                         {student.status === 'active' ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 transition-opacity">
+                    <td className="px-4 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1 transition-opacity">
                         <button 
-                          onClick={() => openModal(student)}
-                          className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                          onClick={() => openModal(student, true)}
+                          className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
                           title="Editar"
                         >
-                          <Edit2 size={16} />
+                          <Edit2 size={14} />
                         </button>
                         <button 
                           onClick={() => handleDelete(student.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/5 rounded-lg transition-all"
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-500/5 rounded-lg transition-all"
                           title="Excluir"
                         >
-                          <Trash2 size={16} />
-                        </button>
-                        <button className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
-                          <MoreVertical size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -652,19 +644,19 @@ export function StudentManagement() {
                           isToggling && "opacity-60 grayscale-[0.5]"
                         )}
                       >
-                        <div className="flex items-center justify-between relative z-10">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
                           <div className="flex items-center gap-4">
                             <div className={cn(
-                              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0",
                               isUnlocked ? "bg-[#F74C00] text-black shadow-lg shadow-orange-500/20" : "bg-white/5 text-gray-700"
                             )}>
                               {isToggling ? <Loader2 size={24} className="animate-spin" /> : <Trophy size={24} />}
                             </div>
-                            <div>
-                              <p className="font-bold text-base text-white">{achievement.name}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
+                            <div className="min-w-0">
+                              <p className="font-bold text-base text-white truncate">{achievement.name}</p>
+                              <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono">{achievement.category}</span>
-                                <span className="w-1 h-1 rounded-full bg-gray-700"></span>
+                                <span className="hidden xs:block w-1 h-1 rounded-full bg-gray-700"></span>
                                 {achievement.type === 'level' ? (
                                   <span className="text-[10px] text-[#FFDA1F] font-bold font-mono uppercase">ALVO: NÍVEL {achievement.requiredLevel}</span>
                                 ) : (
@@ -678,7 +670,7 @@ export function StudentManagement() {
                             onClick={() => toggleAchievement(isAssigningAchievements, achievement.id)}
                             disabled={isToggling}
                             className={cn(
-                              "px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border flex items-center gap-2",
+                              "w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border flex items-center justify-center gap-2",
                               isUnlocked 
                                 ? "bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20" 
                                 : "bg-[#F74C00] border-[#F74C00] text-white hover:bg-[#ff5a14] shadow-lg shadow-orange-500/20",
@@ -739,16 +731,16 @@ export function StudentManagement() {
                   <h3 className="text-xl font-display font-bold">EXCLUIR ALUNO?</h3>
                   <p className="text-sm text-gray-500 mt-2">Esta ação não pode ser desfeita. Todos os dados do aluno serão perdidos.</p>
                 </div>
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button 
                     onClick={() => setDeletingId(null)}
-                    className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl font-bold transition-all"
+                    className="w-full sm:flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl font-bold transition-all"
                   >
                     CANCELAR
                   </button>
                   <button 
                     onClick={confirmDelete}
-                    className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all"
+                    className="w-full sm:flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all"
                   >
                     EXCLUIR
                   </button>

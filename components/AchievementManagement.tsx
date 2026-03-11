@@ -219,8 +219,8 @@ export function AchievementManagement() {
 
       if (error) throw error;
       setAchievements(data || []);
-    } catch (error) {
-      console.error('Error fetching achievements:', error);
+    } catch (error: any) {
+      console.error('Error fetching achievements:', error.message || error);
     } finally {
       setLoading(false);
     }
@@ -235,8 +235,8 @@ export function AchievementManagement() {
 
       if (error) throw error;
       setCategories(data || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
+    } catch (error: any) {
+      console.error('Error fetching categories:', error.message || error);
     }
   };
 
@@ -291,8 +291,9 @@ export function AchievementManagement() {
       setSelectedPreset(COLOR_PRESETS[0]);
       setEditingCategory(null);
       setIsCategoryModalOpen(false);
-    } catch (error) {
-      console.error('Error saving category:', error);
+    } catch (error: any) {
+      console.error('Error saving category:', error.message || error);
+      alert(`Erro ao salvar categoria: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsSavingCategory(false);
     }
@@ -305,8 +306,8 @@ export function AchievementManagement() {
         .delete()
         .eq('id', id);
       if (error) throw error;
-    } catch (error) {
-      console.error('Error deleting category:', error);
+    } catch (error: any) {
+      console.error('Error deleting category:', error.message || error);
     }
   };
 
@@ -314,9 +315,10 @@ export function AchievementManagement() {
     try {
       const payload = {
         name: data.name,
+        title: data.name,
         description: data.description,
         icon: data.icon,
-        category: data.category,
+        category: data.type === 'level' ? null : data.category,
         level: data.level,
         type: data.type,
         required_level: data.requiredLevel || 0
@@ -335,8 +337,9 @@ export function AchievementManagement() {
         if (error) throw error;
       }
       closeModal();
-    } catch (err) {
-      console.error('Error saving achievement:', err);
+    } catch (err: any) {
+      console.error('Error saving achievement:', err.message || err);
+      alert(`Erro ao salvar conquista: ${err.message || 'Erro desconhecido'}`);
     }
   };
 
@@ -353,8 +356,8 @@ export function AchievementManagement() {
         .eq('id', deletingId);
       if (error) throw error;
       setDeletingId(null);
-    } catch (err) {
-      console.error('Error deleting achievement:', err);
+    } catch (err: any) {
+      console.error('Error deleting achievement:', err.message || err);
     }
   };
 
@@ -409,32 +412,35 @@ export function AchievementManagement() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-3xl font-display font-black tracking-tight">CADASTRO DE CONQUISTAS</h2>
-          <p className="text-gray-500 mt-1">Crie e gerencie os emblemas e conquistas do sistema.</p>
+      <div className="flex flex-row items-center justify-between gap-4">
+        <div className="flex-1">
+          <h2 className="text-2xl md:text-3xl font-display font-black tracking-tight uppercase">Cadastro de Conquistas</h2>
+          <p className="text-gray-500 mt-1 text-xs md:text-sm hidden sm:block">Crie e gerencie os emblemas e conquistas do sistema.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <button 
             onClick={() => setIsCategoryModalOpen(true)}
-            className="flex-1 md:flex-none bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/10"
+            className="bg-white/5 hover:bg-white/10 text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/10 text-[10px] md:text-sm whitespace-nowrap"
           >
-            <Settings size={20} className="text-gray-400" />
-            CATEGORIAS
+            <Settings size={16} className="text-gray-400" />
+            <span className="hidden xs:inline">CATEGORIAS</span>
+            <span className="xs:hidden">CAT</span>
           </button>
           <button 
             onClick={() => openModal(null, true)}
-            className="flex-1 md:flex-none bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/10"
+            className="bg-white/5 hover:bg-white/10 text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/10 text-[10px] md:text-sm whitespace-nowrap"
           >
-            <Plus size={20} className="text-[#FFDA1F]" />
-            CONQUISTA DE NÍVEL
+            <Plus size={16} className="text-[#FFDA1F]" />
+            <span className="hidden xs:inline">CONQUISTA DE NÍVEL</span>
+            <span className="xs:hidden">NÍVEL</span>
           </button>
           <button 
             onClick={() => openModal()}
-            className="flex-1 md:flex-none bg-[#F74C00] hover:bg-[#ff5a14] text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-500/20"
+            className="bg-[#F74C00] hover:bg-[#ff5a14] text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-500/20 text-[10px] md:text-sm whitespace-nowrap"
           >
-            <Plus size={20} />
-            NOVA CONQUISTA
+            <Plus size={16} />
+            <span className="hidden xs:inline">NOVA CONQUISTA</span>
+            <span className="xs:hidden">NOVA</span>
           </button>
         </div>
       </div>
@@ -479,8 +485,8 @@ export function AchievementManagement() {
                   <div 
                     className="w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"
                     style={{ 
-                      backgroundColor: achievement.type === 'level' ? 'rgba(255, 218, 31, 0.1)' : `${categories.find(c => c.name === achievement.category)?.color}1A` || 'rgba(247, 76, 0, 0.1)',
-                      color: achievement.type === 'level' ? '#FFDA1F' : categories.find(c => c.name === achievement.category)?.color || '#F74C00'
+                      backgroundColor: achievement.type === 'level' ? 'rgba(255, 218, 31, 0.1)' : `${categories.find(c => c.id === achievement.category)?.color}1A` || 'rgba(247, 76, 0, 0.1)',
+                      color: achievement.type === 'level' ? '#FFDA1F' : categories.find(c => c.id === achievement.category)?.color || '#F74C00'
                     }}
                   >
                     <Icon size={32} />
@@ -506,11 +512,11 @@ export function AchievementManagement() {
                     <span 
                       className="text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-widest"
                       style={{ 
-                        backgroundColor: achievement.type === 'level' ? 'rgba(255, 218, 31, 0.1)' : `${categories.find(c => c.name === achievement.category)?.color}1A` || 'rgba(255, 255, 255, 0.05)',
-                        color: achievement.type === 'level' ? '#FFDA1F' : categories.find(c => c.name === achievement.category)?.color || '#9ca3af'
+                        backgroundColor: achievement.type === 'level' ? 'rgba(255, 218, 31, 0.1)' : `${categories.find(c => c.id === achievement.category)?.color}1A` || 'rgba(255, 255, 255, 0.05)',
+                        color: achievement.type === 'level' ? '#FFDA1F' : categories.find(c => c.id === achievement.category)?.color || '#9ca3af'
                       }}
                     >
-                      {achievement.category}
+                      {achievement.type === 'level' ? 'Nível' : (categories.find(c => c.id === achievement.category)?.name || achievement.category)}
                     </span>
                     {achievement.type === 'level' ? (
                       <span className="text-[10px] font-mono font-bold bg-[#FFDA1F]/10 text-[#FFDA1F] px-2 py-0.5 rounded uppercase tracking-widest">
@@ -585,7 +591,7 @@ export function AchievementManagement() {
                   {errors.description && <p className="text-red-500 text-[10px]">{errors.description.message}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                   {!isLevelMode ? (
                     <>
                       <div className="space-y-2">
@@ -596,7 +602,7 @@ export function AchievementManagement() {
                         >
                           <option value="" disabled>Selecione uma categoria</option>
                           {categories.map(cat => (
-                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
                           ))}
                         </select>
                         {errors.category && <p className="text-red-500 text-[10px]">{errors.category.message}</p>}
@@ -683,18 +689,18 @@ export function AchievementManagement() {
                   </div>
                 </div>
 
-                <div className="pt-4 flex items-center justify-end gap-4">
+                <div className="pt-4 flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-4">
                   <button 
                     type="button"
                     onClick={closeModal}
-                    className="px-6 py-3 text-gray-400 hover:text-white font-bold transition-all"
+                    className="w-full sm:w-auto px-6 py-3 text-gray-400 hover:text-white font-bold transition-all"
                   >
                     CANCELAR
                   </button>
                   <button 
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-[#F74C00] hover:bg-[#ff5a14] text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                    className="w-full sm:w-auto bg-[#F74C00] hover:bg-[#ff5a14] text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
                   >
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check size={18} />}
                     {editingAchievement ? 'SALVAR ALTERAÇÕES' : 'CRIAR CONQUISTA'}

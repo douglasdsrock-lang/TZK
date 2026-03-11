@@ -48,6 +48,7 @@ interface Mission {
 export function MissionManagement() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMission, setEditingMission] = useState<any>(null);
@@ -84,8 +85,8 @@ export function MissionManagement() {
       })) as Mission[];
 
       setMissions(mapped);
-    } catch (error) {
-      console.error('Error fetching missions:', error);
+    } catch (error: any) {
+      console.error('Error fetching missions:', error.message || error);
     } finally {
       setLoading(false);
     }
@@ -96,9 +97,15 @@ export function MissionManagement() {
     setAchievements(data || []);
   };
 
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('*');
+    setCategories(data || []);
+  };
+
   useEffect(() => {
     fetchMissions();
     fetchAchievements();
+    fetchCategories();
 
     const channel = supabase
       .channel('public:missions')
@@ -146,8 +153,9 @@ export function MissionManagement() {
         if (error) throw error;
       }
       closeModal();
-    } catch (err) {
-      console.error('Error saving mission:', err);
+    } catch (err: any) {
+      console.error('Error saving mission:', err.message || err);
+      alert(`Erro ao salvar missão: ${err.message || 'Erro desconhecido'}`);
     }
   };
 
@@ -164,8 +172,8 @@ export function MissionManagement() {
         .eq('id', deletingId);
       if (error) throw error;
       setDeletingId(null);
-    } catch (err) {
-      console.error('Error deleting mission:', err);
+    } catch (err: any) {
+      console.error('Error deleting mission:', err.message || err);
     }
   };
 
@@ -422,7 +430,9 @@ export function MissionManagement() {
                     >
                       <option value="">Nenhuma conquista vinculada</option>
                       {achievements.map(a => (
-                        <option key={a.id} value={a.id}>{a.name} ({a.category})</option>
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({categories.find(c => c.id === a.category)?.name || a.category})
+                        </option>
                       ))}
                     </select>
                     <p className="text-[10px] text-gray-500 italic mt-1">

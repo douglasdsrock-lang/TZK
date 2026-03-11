@@ -41,9 +41,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
 
-  const signIn = async () => {
+  const handleAuth = async () => {
     setAuthError(null);
+    setAuthLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -51,8 +53,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       });
       if (error) throw error;
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      setAuthError(error.message || 'Erro ao entrar. Verifique suas credenciais.');
+      console.error('Auth error:', error);
+      let message = error.message;
+      if (message === 'Invalid login credentials') {
+        message = 'E-mail ou senha incorretos. Verifique suas credenciais.';
+      }
+      setAuthError(message);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -82,8 +90,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           className="w-full max-w-md space-y-8 rounded-2xl border border-white/5 bg-white/5 p-8 backdrop-blur-xl"
         >
           <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-white">Bem-vindo</h1>
-            <p className="text-gray-400">Entre com suas credenciais para continuar</p>
+            <h1 className="text-3xl font-bold tracking-tight text-white">
+              Bem-vindo
+            </h1>
+            <p className="text-gray-400">
+              Entre com suas credenciais para continuar
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -105,22 +117,29 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#F74C00] transition-colors"
                 placeholder="••••••••"
-                onKeyDown={(e) => e.key === 'Enter' && signIn()}
+                onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
               />
             </div>
 
             {authError && (
-              <p className="text-red-500 text-sm text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20">
+              <p className="text-sm text-center py-2 px-3 rounded-lg border text-red-500 bg-red-500/10 border-red-500/20">
                 {authError}
               </p>
             )}
 
             <button
-              onClick={signIn}
-              className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#F74C00] px-4 py-3 font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-orange-500/20"
+              onClick={handleAuth}
+              disabled={authLoading}
+              className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#F74C00] px-4 py-3 font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:hover:scale-100"
             >
-              <LogIn className="h-5 w-5" />
-              Entrar na Plataforma
+              {authLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <LogIn className="h-5 w-5" />
+                  Entrar na Plataforma
+                </>
+              )}
             </button>
           </div>
         </motion.div>
@@ -129,7 +148,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, signIn, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, signIn: handleAuth, logout }}>
       {children}
     </AuthContext.Provider>
   );

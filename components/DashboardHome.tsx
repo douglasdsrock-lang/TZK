@@ -126,25 +126,35 @@ export function DashboardHome() {
           }
         }
       }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+    } catch (error: any) {
+      console.error('Error fetching dashboard data:', error.message || error);
     }
   }, [user]);
 
   useEffect(() => {
     fetchData();
 
-    const channel = supabase
-      .channel('public:dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-        fetchData();
-      })
+    const studentsChannel = supabase
+      .channel('public:dashboard_students')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => fetchData())
+      .subscribe();
+
+    const missionsChannel = supabase
+      .channel('public:dashboard_missions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => fetchData())
+      .subscribe();
+
+    const achievementsChannel = supabase
+      .channel('public:dashboard_achievements')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'achievements' }, () => fetchData())
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(studentsChannel);
+      supabase.removeChannel(missionsChannel);
+      supabase.removeChannel(achievementsChannel);
     };
-  }, [user]);
+  }, [user, fetchData]);
 
   // Auto-leveling logic
   useEffect(() => {
@@ -223,9 +233,9 @@ export function DashboardHome() {
           <div className="flex-1 text-center md:text-left space-y-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
-                BEM-VINDO DE VOLTA, <span className="text-[#F74C00] uppercase">{user?.user_metadata?.full_name?.split(' ')[0] || 'JOGADOR'}</span>
+                BEM-VINDO, <span className="text-[#F74C00] uppercase">{studentData?.firstName || user?.user_metadata?.full_name?.split(' ')[0] || 'JOGADOR'}</span>
               </h1>
-              <p className="text-gray-400 mt-1 text-sm md:text-base">Sua jornada continua. 3 novas missões disponíveis hoje.</p>
+              <p className="text-gray-400 mt-1 text-sm md:text-base">Sua jornada continua. {eventMission ? '1 evento especial' : '3 novas missões'} disponível hoje.</p>
             </div>
             
             <div className="space-y-2 max-w-md mx-auto md:mx-0">
