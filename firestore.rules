@@ -1,0 +1,172 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: students
+    // Fields:
+    //   - name: string (required)
+    //   - class: string (required)
+    //   - age: number (optional)
+    //   - profilePhoto: string (optional)
+    //   - level: number (required)
+    //   - experience: number (required)
+    //   - achievements: list (required)
+    //   - notes: string (optional)
+    //   - status: string (required, enum: active, inactive)
+    //   - createdAt: timestamp (required)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: achievements
+    // Fields:
+    //   - name: string (required)
+    //   - description: string (required)
+    //   - icon: string (required)
+    //   - category: string (required)
+    //   - levelRequired: number (required)
+    //   - createdAt: timestamp (required)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: missions
+    // Fields:
+    //   - title: string (required)
+    //   - description: string (optional)
+    //   - type: string (required, enum: standard, timed)
+    //   - sequence: number (optional)
+    //   - deadline: timestamp (optional)
+    //   - linkedAchievementId: string (optional)
+    //   - createdAt: timestamp (required)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: achievement_categories
+    // Fields:
+    //   - name: string (required)
+    //   - color: string (required, hex)
+    //   - secondaryColor: string (optional, hex)
+    //   - createdAt: timestamp (required)
+    //   - updatedAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "agencia.unrocket@gmail.com" || 
+         request.auth.uid == "OMCUqpvEF9Zjg28ivP95zosy0zJ3");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidStudent(data) {
+      return data.firstName is string && data.firstName.size() > 0 && data.firstName.size() < 100 &&
+             data.lastName is string && data.lastName.size() > 0 && data.lastName.size() < 100 &&
+             data.email is string && data.email.size() > 0 &&
+             data.class is string && data.class.size() > 0 && data.class.size() < 50 &&
+             data.gender in ['male', 'female'] &&
+             data.level is number && data.level >= 0 &&
+             data.experience is number && data.experience >= 0 &&
+             data.achievements is list &&
+             data.status in ['active', 'inactive'] &&
+             data.age is number &&
+             data.birthDate is string &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp &&
+             (!('profilePhoto' in data) || data.profilePhoto == null || data.profilePhoto is string) &&
+             (!('notes' in data) || data.notes == null || data.notes is string) &&
+             (!('password' in data) || data.password == null || data.password is string);
+    }
+
+    function isValidAchievement(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 500 &&
+             iconIsValid(data.icon) &&
+             data.category is string && data.category.size() > 0 &&
+             data.level is number && data.level >= 0 &&
+             data.type in ['standard', 'level'] &&
+             (!('requiredLevel' in data) || data.requiredLevel is number) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function iconIsValid(icon) {
+      return icon is string && icon.size() > 0 && icon.size() < 200000;
+    }
+
+    function isValidMission(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.type in ['standard', 'timed'] &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp &&
+             (!('description' in data) || data.description == null || data.description is string) &&
+             (!('sequence' in data) || data.sequence == null || data.sequence is number) &&
+             (!('deadline' in data) || data.deadline == null || data.deadline is timestamp) &&
+             (!('linkedAchievementId' in data) || data.linkedAchievementId == null || data.linkedAchievementId is string);
+    }
+
+    function isValidAchievementCategory(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.color is string && data.color.matches("^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$") &&
+             (!('secondaryColor' in data) || (data.secondaryColor is string && data.secondaryColor.matches("^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"))) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /students/{studentId} {
+      // Students can be read by authenticated users (for dashboard display)
+      allow read: if isAuthenticated();
+      
+      // Only admins can create or delete students
+      // Users can update their own document (for auto-leveling and profile updates)
+      allow create: if isAdmin() && 
+                      hasRequiredFields(['firstName', 'lastName', 'email', 'class', 'gender', 'level', 'experience', 'achievements', 'status', 'createdAt', 'updatedAt']) && 
+                      isValidStudent(request.resource.data);
+      allow update: if (isAdmin() || (isAuthenticated() && request.auth.token.email == resource.data.email)) && isValidStudent(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /achievements/{achievementId} {
+      // Achievements are public to read for authenticated users
+      allow read: if isAuthenticated();
+      
+      // Only admins can manage achievements
+      allow create, update: if isAdmin() && isValidAchievement(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /missions/{missionId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidMission(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /achievement_categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidAchievementCategory(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

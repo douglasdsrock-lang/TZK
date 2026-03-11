@@ -1,0 +1,5 @@
+{
+  "name": "TZK Achievement Platform",
+  "description": "A modern gamified student achievement tracking platform for social projects, now with Supabase and Firebase integration.",
+  "requestFramePermissions": []
+}

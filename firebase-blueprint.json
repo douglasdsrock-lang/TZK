@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "Student": {
+      "title": "Student",
+      "description": "A student participating in the social project.",
+      "type": "object",
+      "properties": {
+        "firstName": { "type": "string", "description": "First name of the student" },
+        "lastName": { "type": "string", "description": "Last name of the student" },
+        "email": { "type": "string", "format": "email", "description": "Email address for login" },
+        "birthDate": { "type": "string", "format": "date", "description": "Date of birth" },
+        "gender": { "type": "string", "enum": ["male", "female"], "description": "Gender of the student" },
+        "age": { "type": "number", "description": "Age of the student (calculated or stored)" },
+        "class": { "type": "string", "description": "Class or group the student belongs to" },
+        "profilePhoto": { "type": "string", "description": "URL to the student's profile photo" },
+        "level": { "type": "number", "description": "Current gamified level" },
+        "experience": { "type": "number", "description": "Current experience points" },
+        "achievements": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "achievementId": { "type": "string" },
+              "level": { "type": "number" }
+            }
+          },
+          "description": "List of achievements with their respective levels"
+        },
+        "notes": { "type": "string", "description": "Admin notes about the student" },
+        "status": { "type": "string", "enum": ["active", "inactive"], "description": "Current status of the student" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the student record was created" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "When the student record was last updated" }
+      },
+      "required": ["firstName", "lastName", "email", "status"]
+    },
+    "Mission": {
+      "title": "Mission",
+      "description": "A task or goal for students to complete.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Title of the mission" },
+        "description": { "type": "string", "description": "Detailed description" },
+        "type": { "type": "string", "enum": ["standard", "timed"], "description": "Type of mission" },
+        "sequence": { "type": "number", "description": "Order for standard missions" },
+        "deadline": { "type": "string", "format": "date-time", "description": "Deadline for timed missions" },
+        "linkedAchievementId": { "type": "string", "description": "Achievement ID that unlocks the next mission" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "type", "createdAt"]
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "A gamified achievement or badge.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Display name of the achievement" },
+        "description": { "type": "string", "description": "Description of how to earn it" },
+        "icon": { "type": "string", "description": "Lucide icon name or base64 image" },
+        "category": { "type": "string", "description": "Category like 'Clan', 'Mission', etc." },
+        "level": { "type": "number", "description": "Level/weight of the achievement" },
+        "type": { "type": "string", "enum": ["standard", "level"], "description": "Type of achievement" },
+        "requiredLevel": { "type": "number", "description": "Level required to unlock (for type 'level')" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "icon", "category", "level"]
+    },
+    "AchievementCategory": {
+      "title": "AchievementCategory",
+      "description": "Category for achievements with a specific color.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the category" },
+        "color": { "type": "string", "description": "Hex color code for the primary color" },
+        "secondaryColor": { "type": "string", "description": "Hex color code for the secondary color (for gradients)" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "color"]
+    }
+  },
+  "firestore": {
+    "/students": {
+      "schema": "Student",
+      "description": "Collection of students"
+    },
+    "/achievements": {
+      "schema": "Achievement",
+      "description": "Collection of available achievements"
+    },
+    "/missions": {
+      "schema": "Mission",
+      "description": "Collection of missions"
+    },
+    "/achievement_categories": {
+      "schema": "AchievementCategory",
+      "description": "Collection of achievement categories"
+    }
+  }
+}
