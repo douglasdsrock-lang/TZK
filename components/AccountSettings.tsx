@@ -15,7 +15,6 @@ import {
 import { motion } from 'motion/react';
 import { supabase } from '@/lib/supabase';
 import { getAvatarUrl } from '@/lib/utils';
-import { SupabaseStatus } from './SupabaseStatus';
 
 export function AccountSettings() {
   const [userData, setUserData] = useState<any>(null);
@@ -248,8 +247,6 @@ export function AccountSettings() {
               </div>
             </form>
           </div>
-
-          <SupabaseStatus />
         </div>
       </div>
     </div>
