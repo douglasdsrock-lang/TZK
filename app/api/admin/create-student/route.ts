@@ -10,8 +10,12 @@ export async function POST(req: Request) {
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
     if (!supabaseUrl || !serviceRoleKey) {
+      const missing = [];
+      if (!supabaseUrl) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+      if (!serviceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+      
       return NextResponse.json(
-        { error: 'Configuração do servidor incompleta. Verifique se a SUPABASE_SERVICE_ROLE_KEY foi adicionada aos segredos do AI Studio.' },
+        { error: `Configuração incompleta: Variáveis ausentes: ${missing.join(', ')}. Se você estiver no Vercel, adicione-as no Dashboard do projeto e faça um novo deploy. Se estiver no AI Studio, verifique a aba Secrets.` },
         { status: 500 }
       );
     }
