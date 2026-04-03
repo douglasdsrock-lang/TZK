@@ -71,10 +71,26 @@ const achievementSchema = z.object({
   name: z.string().min(2, 'Nome muito curto'),
   description: z.string().min(5, 'Descrição muito curta'),
   icon: z.string().min(1, 'Ícone é obrigatório'),
-  category: z.string().min(1, 'Categoria é obrigatória'),
+  category: z.string().optional().or(z.literal('')),
   level: z.number().min(0, 'Nível de recompensa inválido'),
   type: z.enum(['standard', 'level']),
-  requiredLevel: z.number().optional(),
+  requiredLevel: z.number().optional().or(z.literal(NaN)).transform(v => (typeof v === 'number' && !isNaN(v)) ? v : 0),
+}).refine((data) => {
+  if (data.type === 'standard' && (!data.category || data.category === '')) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Categoria é obrigatória',
+  path: ['category'],
+}).refine((data) => {
+  if (data.type === 'level' && (data.requiredLevel === undefined || data.requiredLevel <= 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Nível alvo deve ser maior que 0',
+  path: ['requiredLevel'],
 });
 
 type AchievementFormValues = z.infer<typeof achievementSchema>;
@@ -319,7 +335,7 @@ export function AchievementManagement() {
         description: data.description,
         icon: data.icon,
         category: data.type === 'level' ? null : data.category,
-        level: data.level,
+        level: data.type === 'level' ? 0 : data.level,
         type: data.type,
         required_level: data.requiredLevel || 0
       };
@@ -374,14 +390,14 @@ export function AchievementManagement() {
         category: achievement.category,
         level: achievement.level || 0,
         type: achievement.type || 'standard',
-        requiredLevel: achievement.requiredLevel || 0,
+        requiredLevel: achievement.required_level || 0,
       });
     } else {
       reset({
         name: '',
         description: '',
         icon: 'Trophy',
-        category: levelMode ? 'Nível' : 'Clan',
+        category: '',
         level: levelMode ? 0 : 1,
         type: levelMode ? 'level' : 'standard',
         requiredLevel: levelMode ? 10 : 0,
@@ -520,7 +536,7 @@ export function AchievementManagement() {
                     </span>
                     {achievement.type === 'level' ? (
                       <span className="text-[10px] font-mono font-bold bg-[#FFDA1F]/10 text-[#FFDA1F] px-2 py-0.5 rounded uppercase tracking-widest">
-                        Alvo: Nível {achievement.requiredLevel}
+                        Alvo: Nível {achievement.required_level}
                       </span>
                     ) : (
                       <span className="text-[10px] font-mono font-bold bg-[#FFDA1F]/10 text-[#FFDA1F] px-2 py-0.5 rounded uppercase tracking-widest">
@@ -540,12 +556,12 @@ export function AchievementManagement() {
       {/* Achievement Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-10 bg-black/60 backdrop-blur-sm overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#151518] border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+              className="bg-[#151518] border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl my-auto"
             >
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                 <h3 className="text-xl font-display font-bold uppercase">
@@ -556,7 +572,7 @@ export function AchievementManagement() {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
+              <form onSubmit={handleSubmit(onSubmit)} className="p-6 md:p-8 space-y-4 md:space-y-6">
                 {isLevelMode && (
                   <div className="p-4 bg-[#FFDA1F]/10 border border-[#FFDA1F]/20 rounded-2xl">
                     <p className="text-xs text-[#FFDA1F] font-bold uppercase tracking-wider flex items-center gap-2">
@@ -626,6 +642,7 @@ export function AchievementManagement() {
                           className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
                           placeholder="Nível para desbloqueio"
                         />
+                        {errors.requiredLevel && <p className="text-red-500 text-[10px]">{errors.requiredLevel.message}</p>}
                       </div>
                       <div className="space-y-2 opacity-50">
                         <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Recompensa</label>
@@ -670,7 +687,7 @@ export function AchievementManagement() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-5 gap-3 max-h-[200px] overflow-y-auto p-1 scrollbar-hide">
+                  <div className="grid grid-cols-5 gap-3 max-h-[200px] overflow-y-auto p-1">
                     {AVAILABLE_ICONS.map((item) => (
                       <button
                         key={item.name}
@@ -715,12 +732,12 @@ export function AchievementManagement() {
       {/* Category Management Modal */}
       <AnimatePresence>
         {isCategoryModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-10 bg-black/60 backdrop-blur-sm overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#151518] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+              className="bg-[#151518] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl my-auto"
             >
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                 <h3 className="text-xl font-display font-bold uppercase">GERENCIAR CATEGORIAS</h3>
@@ -785,7 +802,7 @@ export function AchievementManagement() {
                   )}
                 </div>
 
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
                   <label className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">Categorias Existentes</label>
                   {categories.length === 0 ? (
                     <p className="text-xs text-gray-600 italic py-4 text-center">Nenhuma categoria cadastrada.</p>

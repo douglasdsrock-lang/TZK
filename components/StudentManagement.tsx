@@ -77,6 +77,7 @@ export function StudentManagement() {
         class: s.class,
         birthDate: s.birth_date,
         gender: s.gender,
+        characterId: s.character_id,
         status: s.status,
         notes: s.notes,
         level: s.level,
@@ -393,6 +394,7 @@ export function StudentManagement() {
                             firstName={student.firstName}
                             lastName={student.lastName}
                             gender={student.gender}
+                            characterId={student.characterId}
                           />
                         </div>
                         <div className="min-w-0">
@@ -463,12 +465,12 @@ export function StudentManagement() {
       {/* Student Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-10 bg-black/60 backdrop-blur-sm overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#151518] border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl"
+              className="bg-[#151518] border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl my-auto"
             >
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                 <h3 className="text-xl font-display font-bold">
@@ -479,8 +481,8 @@ export function StudentManagement() {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form onSubmit={handleSubmit(onSubmit)} className="p-6 md:p-8 space-y-4 md:space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Nome</label>
                     <input 
@@ -605,12 +607,12 @@ export function StudentManagement() {
       {/* Achievement Assignment Modal */}
       <AnimatePresence>
         {isAssigningAchievements && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-10 bg-black/60 backdrop-blur-sm overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#151518] border border-white/10 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl"
+              className="bg-[#151518] border border-white/10 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl my-auto"
             >
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                 <div>
@@ -622,7 +624,7 @@ export function StudentManagement() {
                 </button>
               </div>
 
-              <div className="p-6 max-h-[60vh] overflow-y-auto space-y-3">
+              <div className="p-6 space-y-3">
                 {achievements.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 italic">
                     Nenhuma conquista definida no sistema.

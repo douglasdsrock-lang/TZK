@@ -21,7 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 
 const missionSchema = z.object({
   title: z.string().min(2, 'Título muito curto'),
@@ -131,12 +131,13 @@ export function MissionManagement() {
 
   const onSubmit = async (data: MissionFormValues) => {
     try {
+      const deadlineDate = data.deadline ? new Date(data.deadline) : null;
       const payload = {
         title: data.title,
         description: data.description,
         type: data.type,
         sequence: data.sequence,
-        deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+        deadline: deadlineDate && !isNaN(deadlineDate.getTime()) ? deadlineDate.toISOString() : null,
         linked_achievement_id: data.linkedAchievementId || null
       };
 
@@ -185,7 +186,7 @@ export function MissionManagement() {
         description: mission.description,
         type: mission.type,
         sequence: mission.sequence || 1,
-        deadline: mission.deadline ? new Date(mission.deadline.seconds * 1000).toISOString().split('T')[0] : '',
+        deadline: mission.deadline ? (typeof mission.deadline === 'string' ? mission.deadline.split('T')[0] : new Date(mission.deadline.seconds * 1000).toISOString().split('T')[0]) : '',
         linkedAchievementId: mission.linkedAchievementId || '',
       });
     } else {
@@ -327,7 +328,7 @@ export function MissionManagement() {
                         {mission.deadline && (
                           <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-md w-fit">
                             <Clock size={12} />
-                            EXPIRA EM: {new Date(mission.deadline).toLocaleDateString('pt-BR')}
+                            EXPIRA EM: {formatDate(mission.deadline)}
                           </div>
                         )}
                       </div>
@@ -418,28 +419,26 @@ export function MissionManagement() {
                   )}
                 </div>
 
-                {missionType === 'standard' && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                      <Trophy size={12} />
-                      Vincular a Conquista (Opcional)
-                    </label>
-                    <select 
-                      {...register('linkedAchievementId')}
-                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all appearance-none"
-                    >
-                      <option value="">Nenhuma conquista vinculada</option>
-                      {achievements.map(a => (
-                        <option key={a.id} value={a.id}>
-                          {a.name} ({categories.find(c => c.id === a.category)?.name || a.category})
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-[10px] text-gray-500 italic mt-1">
-                      Se selecionado, a próxima missão só aparecerá quando o aluno ganhar esta conquista.
-                    </p>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                    <Trophy size={12} />
+                    Vincular a Conquista (Opcional)
+                  </label>
+                  <select 
+                    {...register('linkedAchievementId')}
+                    className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all appearance-none"
+                  >
+                    <option value="">Nenhuma conquista vinculada</option>
+                    {achievements.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({categories.find(c => c.id === a.category)?.name || a.category})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-gray-500 italic mt-1">
+                    Se selecionado, a missão será considerada concluída quando o aluno ganhar esta conquista.
+                  </p>
+                </div>
 
                 <div className="pt-4 flex items-center justify-end gap-4">
                   <button 

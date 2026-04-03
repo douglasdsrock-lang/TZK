@@ -1,82 +1,171 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { AuthGuard, useAuth } from '@/components/AuthGuard';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { DashboardHome } from '@/components/DashboardHome';
+import { Ranking } from '@/components/Ranking';
 import { AchievementsGrid } from '@/components/AchievementsGrid';
+import { AccountSettings } from '@/components/AccountSettings';
 import { StudentManagement } from '@/components/StudentManagement';
 import { AchievementManagement } from '@/components/AchievementManagement';
 import { MissionManagement } from '@/components/MissionManagement';
-import { Ranking } from '@/components/Ranking';
-import { AccountSettings } from '@/components/AccountSettings';
-import { motion, AnimatePresence } from 'motion/react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { WelcomeScreen } from '@/components/WelcomeScreen';
+import { supabase } from '@/lib/supabase';
+import { getCharacterById } from '@/lib/characters';
+import { soundManager } from '@/lib/sounds';
 
 function DashboardContent() {
   const [activeTab, setActiveTab] = useState('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [studentData, setStudentData] = useState<any>(null);
+  const [showWelcomePreview, setShowWelcomePreview] = useState(false);
+  const { user, isAdmin } = useAuth();
+
+  useEffect(() => {
+    const handlePreview = () => setShowWelcomePreview(true);
+    window.addEventListener('show-welcome-preview', handlePreview);
+    return () => window.removeEventListener('show-welcome-preview', handlePreview);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchStudentData = async () => {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      let finalData = data;
+      if (!finalData && user.email) {
+        const { data: dataByEmail } = await supabase
+          .from('students')
+          .select('*')
+          .eq('email', user.email)
+          .maybeSingle();
+        finalData = dataByEmail;
+      }
+
+      if (finalData) {
+        setStudentData({
+          ...finalData,
+          characterId: finalData.character_id
+        });
+      }
+    };
+
+    fetchStudentData();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('student_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'students',
+        filter: `id=eq.${user.id}`
+      }, (payload) => {
+        setStudentData({
+          ...payload.new,
+          characterId: (payload.new as any).character_id
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const character = getCharacterById(studentData?.characterId);
+  const themeColor = character?.color || '#F74C00';
+
+  if (user && studentData && (!studentData.characterId || showWelcomePreview)) {
+    return (
+      <WelcomeScreen 
+        user={user} 
+        studentData={studentData} 
+        onComplete={() => {
+          setShowWelcomePreview(false);
+          // Refresh student data after selection
+          const fetchStudentData = async () => {
+            const { data } = await supabase
+              .from('students')
+              .select('*')
+              .eq('id', user.id)
+              .maybeSingle();
+            if (data) setStudentData({ ...data, characterId: data.character_id });
+          };
+          fetchStudentData();
+        }} 
+      />
+    );
+  }
+
+  const handleTabChange = (tab: string) => {
+    soundManager.playClick();
+    setActiveTab(tab);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        return <DashboardHome />;
-      case 'achievements':
-        return <AchievementsGrid />;
+        return <DashboardHome themeColor={themeColor} />;
       case 'ranking':
-        return <Ranking />;
-      case 'management':
-        return <StudentManagement />;
-      case 'achievement-management':
-        return <AchievementManagement />;
-      case 'mission-management':
-        return <MissionManagement />;
+        return <Ranking themeColor={themeColor} />;
+      case 'achievements':
+        return <AchievementsGrid themeColor={themeColor} />;
       case 'account':
         return <AccountSettings />;
+      case 'management':
+        return isAdmin ? <StudentManagement /> : <DashboardHome themeColor={themeColor} />;
+      case 'achievement-management':
+        return isAdmin ? <AchievementManagement /> : <DashboardHome themeColor={themeColor} />;
+      case 'mission-management':
+        return isAdmin ? <MissionManagement /> : <DashboardHome themeColor={themeColor} />;
       default:
-        return <DashboardHome />;
+        return <DashboardHome themeColor={themeColor} />;
     }
   };
 
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    setIsSidebarOpen(false); // Close sidebar on mobile when a tab is selected
-  };
-
   return (
-    <div className="flex min-h-screen bg-[#0A0A0B]">
+    <div className="flex min-h-screen bg-[#0A0A0B] text-white">
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={handleTabChange} 
-        isOpen={isSidebarOpen} 
-        setIsOpen={setIsSidebarOpen} 
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+        themeColor={themeColor}
       />
       
-      <main className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0">
         <Header 
           setActiveTab={handleTabChange} 
-          toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
+          toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          themeColor={themeColor}
         />
         
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.3 }}
-              >
-                {renderContent()}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </div>
-      </main>
+        <main className="flex-1 p-4 md:p-8 overflow-visible relative z-50">
+          <ErrorBoundary>
+            {renderContent()}
+          </ErrorBoundary>
+        </main>
+      </div>
     </div>
   );
 }
 
 export default function Page() {
-  return <DashboardContent />;
+  return (
+    <AuthGuard>
+      <DashboardContent />
+    </AuthGuard>
+  );
 }

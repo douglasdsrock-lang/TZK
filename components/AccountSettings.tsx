@@ -14,7 +14,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { supabase } from '@/lib/supabase';
-import { getAvatarUrl } from '@/lib/utils';
+import { getAvatarUrl, formatDate } from '@/lib/utils';
+import { characters, getCharacterById } from '@/lib/characters';
+import { soundManager } from '@/lib/sounds';
 
 export function AccountSettings() {
   const [userData, setUserData] = useState<any>(null);
@@ -23,8 +25,10 @@ export function AccountSettings() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const [email, setEmail] = useState('');
+  const [gender, setGender] = useState<'male' | 'female'>('male');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -35,19 +39,47 @@ export function AccountSettings() {
         const { data: student } = await supabase
           .from('students')
           .select('*')
-          .eq('email', user.email)
-          .single();
+          .eq('id', user.id)
+          .maybeSingle();
 
         if (student) {
-          setUserData(student);
+          // Map snake_case from DB to camelCase for the UI
+          const mappedData = {
+            ...student,
+            firstName: student.first_name,
+            lastName: student.last_name
+          };
+          setUserData(mappedData);
           setEmail(student.email || user.email || '');
+          setGender(student.gender || 'male');
+          setSelectedCharacterId(student.character_id || null);
         } else {
-          setUserData({
-            firstName: user.user_metadata?.full_name?.split(' ')[0] || 'Usuário',
-            lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-            email: user.email,
-          });
-          setEmail(user.email || '');
+          // Fallback to email if id not found (for legacy records)
+          const { data: studentByEmail } = await supabase
+            .from('students')
+            .select('*')
+            .eq('email', user.email)
+            .maybeSingle();
+
+          if (studentByEmail) {
+            const mappedData = {
+              ...studentByEmail,
+              firstName: studentByEmail.first_name,
+              lastName: studentByEmail.last_name
+            };
+            setUserData(mappedData);
+            setEmail(studentByEmail.email || user.email || '');
+            setGender(studentByEmail.gender || 'male');
+            setSelectedCharacterId(studentByEmail.character_id || null);
+          } else {
+            setUserData({
+              id: user.id,
+              firstName: user.user_metadata?.full_name?.split(' ')[0] || 'Usuário',
+              lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+              email: user.email,
+            });
+            setEmail(user.email || '');
+          }
         }
       } catch (err) {
         console.error('Error fetching user data:', err);
@@ -86,32 +118,58 @@ export function AccountSettings() {
         setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
       }
 
-      // 3. Update Students table if exists
-      const { data: student } = await supabase
+      // 3. Upsert student record
+      const upsertData: any = {
+        id: user.id, // Always use the auth user ID
+        email: email,
+        gender: gender,
+        character_id: selectedCharacterId,
+        first_name: userData?.firstName || userData?.first_name || user.user_metadata?.full_name?.split(' ')[0] || 'Usuário',
+        last_name: userData?.lastName || userData?.last_name || user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Attempting upsert with data:', upsertData);
+
+      const { data: upsertedData, error: upsertError } = await supabase
         .from('students')
-        .select('id')
-        .eq('email', user.email)
+        .upsert(upsertData) // Remove explicit onConflict to let Supabase use the PK
+        .select()
         .single();
 
-      if (student) {
-        await supabase
-          .from('students')
-          .update({
-            email: email,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', student.id);
+      if (upsertError) {
+        console.error('Supabase Upsert Error Details:', {
+          message: upsertError.message,
+          details: upsertError.details,
+          hint: upsertError.hint,
+          code: upsertError.code
+        });
+        throw upsertError;
+      }
+      
+      if (upsertedData) {
+        setUserData({
+          ...upsertedData,
+          firstName: upsertedData.first_name,
+          lastName: upsertedData.last_name
+        });
       }
       
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      console.error('Update error:', err);
-      setMessage({ type: 'error', text: err.message || 'Erro ao atualizar perfil' });
+      console.error('Update error full object:', err);
+      console.error('Update error stringified:', JSON.stringify(err, null, 2));
+      const errorMessage = err.message || (typeof err === 'string' ? err : 'Erro ao atualizar perfil');
+      setMessage({ type: 'error', text: errorMessage });
     } finally {
       setSaving(false);
     }
   };
+
+  const selectedCharacter = getCharacterById(selectedCharacterId);
+  const themeColor = selectedCharacter?.color || '#F74C00';
+  const filteredCharacters = characters.filter(c => c.gender === gender);
 
   if (loading) {
     return (
@@ -132,14 +190,17 @@ export function AccountSettings() {
         {/* Profile Info Card */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-[#151518] border border-white/5 rounded-3xl p-8 flex flex-col items-center text-center">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#F74C00] to-[#FFDA1F] p-1 mb-4 relative overflow-hidden">
+            <div 
+              className="w-24 h-24 rounded-2xl p-1 mb-4 relative overflow-hidden"
+              style={{ background: `linear-gradient(to bottom right, ${themeColor}, #FFDA1F)` }}
+            >
               <Image 
-                src={userData?.profilePhoto || getAvatarUrl(`${userData?.firstName} ${userData?.lastName}`)} 
+                src={selectedCharacter?.profileImage || userData?.profilePhoto || getAvatarUrl(`${userData?.firstName} ${userData?.lastName}`)} 
                 alt={userData?.firstName || 'User'}
                 fill
                 className="object-cover rounded-[14px]"
                 referrerPolicy="no-referrer"
-                unoptimized={!userData?.profilePhoto}
+                unoptimized={!!selectedCharacter || !userData?.profilePhoto}
               />
             </div>
             <h3 className="text-xl font-bold text-white">
@@ -153,14 +214,14 @@ export function AccountSettings() {
             
             <div className="w-full space-y-4 text-left">
               <div className="flex items-center gap-3 text-sm">
-                <Calendar className="text-[#F74C00]" size={16} />
+                <Calendar style={{ color: themeColor }} size={16} />
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase font-mono">Nascimento</p>
-                  <p className="text-gray-300">{userData?.birthDate ? new Date(userData.birthDate).toLocaleDateString('pt-BR') : 'Não informado'}</p>
+                  <p className="text-gray-300">{formatDate(userData?.birthDate)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 text-sm">
-                <User className="text-[#F74C00]" size={16} />
+                <User style={{ color: themeColor }} size={16} />
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase font-mono">Sexo</p>
                   <p className="text-gray-300">{userData?.gender === 'female' ? 'Feminino' : 'Masculino'}</p>
@@ -171,10 +232,81 @@ export function AccountSettings() {
         </div>
 
         {/* Edit Form Card */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-8">
           <div className="bg-[#151518] border border-white/5 rounded-3xl p-8">
             <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <Lock size={20} className="text-[#F74C00]" />
+              <User size={20} style={{ color: themeColor }} />
+              Informações Pessoais
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="space-y-2">
+                <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Seu Sexo</label>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setGender('male')}
+                    className="flex-1 py-3 rounded-xl border font-bold transition-all"
+                    style={{ 
+                      backgroundColor: gender === 'male' ? `${themeColor}1A` : '#0A0A0B',
+                      borderColor: gender === 'male' ? themeColor : 'rgba(255,255,255,0.05)',
+                      color: gender === 'male' ? themeColor : '#6B7280'
+                    }}
+                  >
+                    Masculino
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGender('female')}
+                    className="flex-1 py-3 rounded-xl border font-bold transition-all"
+                    style={{ 
+                      backgroundColor: gender === 'female' ? `${themeColor}1A` : '#0A0A0B',
+                      borderColor: gender === 'female' ? themeColor : 'rgba(255,255,255,0.05)',
+                      color: gender === 'female' ? themeColor : '#6B7280'
+                    }}
+                  >
+                    Feminino
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+              <User size={20} style={{ color: themeColor }} />
+              Escolha seu Personagem
+            </h3>
+            
+            <div className="grid grid-cols-4 gap-4 mb-8">
+              {filteredCharacters.map((char) => (
+                <button
+                  key={char.id}
+                  type="button"
+                  onClick={() => setSelectedCharacterId(char.id)}
+                  className="relative aspect-square rounded-xl border-2 transition-all overflow-hidden group"
+                  style={{ 
+                    borderColor: selectedCharacterId === char.id ? char.color : 'rgba(255,255,255,0.05)',
+                    boxShadow: selectedCharacterId === char.id ? `0 0 15px ${char.color}4D` : 'none'
+                  }}
+                >
+                  <Image 
+                    src={char.profileImage}
+                    alt={char.name}
+                    fill
+                    className="object-cover"
+                    referrerPolicy="no-referrer"
+                    unoptimized
+                  />
+                  {selectedCharacterId === char.id && (
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: `${char.color}33` }}>
+                      <CheckCircle2 className="text-white" size={24} />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+              <Lock size={20} style={{ color: themeColor }} />
               Segurança e Acesso
             </h3>
 
@@ -200,7 +332,10 @@ export function AccountSettings() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
+                    className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none transition-all"
+                    style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = themeColor}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'}
                     placeholder="seu@email.com"
                   />
                 </div>
@@ -215,7 +350,10 @@ export function AccountSettings() {
                       type="password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
+                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none transition-all"
+                      style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+                      onFocus={(e) => e.currentTarget.style.borderColor = themeColor}
+                      onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'}
                       placeholder="••••••••"
                     />
                   </div>
@@ -228,18 +366,36 @@ export function AccountSettings() {
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
+                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none transition-all"
+                      style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+                      onFocus={(e) => e.currentTarget.style.borderColor = themeColor}
+                      onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'}
                       placeholder="••••••••"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end">
+              <div className="pt-4 flex justify-end gap-4">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    soundManager.playClick();
+                    window.dispatchEvent(new CustomEvent('show-welcome-preview'));
+                  }}
+                  className="px-6 py-3 rounded-xl font-bold border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  TESTAR TELA DE BOAS-VINDAS
+                </button>
                 <button 
                   type="submit"
                   disabled={saving}
-                  className="bg-[#F74C00] hover:bg-[#ff5a14] text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-orange-500/20"
+                  onClick={() => soundManager.playSelect()}
+                  className="text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 shadow-lg"
+                  style={{ 
+                    backgroundColor: themeColor,
+                    boxShadow: `0 10px 20px ${themeColor}33`
+                  }}
                 >
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={20} />}
                   SALVAR ALTERAÇÕES

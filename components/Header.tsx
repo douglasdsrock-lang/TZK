@@ -5,13 +5,15 @@ import Image from 'next/image';
 import { Bell, Settings, Menu } from 'lucide-react';
 import { useAuth } from './AuthGuard';
 import { supabase } from '@/lib/supabase';
+import { soundManager } from '@/lib/sounds';
 
 interface HeaderProps {
   setActiveTab?: (tab: string) => void;
   toggleSidebar?: () => void;
+  themeColor: string;
 }
 
-export function Header({ setActiveTab, toggleSidebar }: HeaderProps) {
+export function Header({ setActiveTab, toggleSidebar, themeColor }: HeaderProps) {
   const { user } = useAuth();
   const [hasNewMissions, setHasNewMissions] = useState(false);
 
@@ -46,10 +48,13 @@ export function Header({ setActiveTab, toggleSidebar }: HeaderProps) {
   }, []);
 
   return (
-    <header className="h-20 border-b border-white/5 px-4 md:px-8 flex items-center justify-between bg-[#0A0A0B]/80 backdrop-blur-md sticky top-0 z-40">
+    <header className="h-20 border-b border-white/5 px-4 md:px-8 flex items-center justify-between bg-[#0A0A0B]/80 backdrop-blur-md sticky top-0 z-30">
       <div className="flex items-center gap-4">
         <button 
-          onClick={toggleSidebar}
+          onClick={() => {
+            soundManager.playClick();
+            toggleSidebar?.();
+          }}
           className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all lg:hidden"
         >
           <Menu size={24} />
@@ -63,15 +68,24 @@ export function Header({ setActiveTab, toggleSidebar }: HeaderProps) {
         <div className="flex items-center gap-2">
           <button 
             className="p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all relative"
-            onClick={() => setHasNewMissions(false)}
+            onClick={() => {
+              soundManager.playClick();
+              setHasNewMissions(false);
+            }}
           >
             <Bell size={20} />
             {hasNewMissions && (
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#F74C00] rounded-full border-2 border-[#0A0A0B]"></span>
+              <span 
+                className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full border-2 border-[#0A0A0B]"
+                style={{ backgroundColor: themeColor }}
+              ></span>
             )}
           </button>
           <button 
-            onClick={() => setActiveTab?.('account')}
+            onClick={() => {
+              soundManager.playClick();
+              setActiveTab?.('account');
+            }}
             className="p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
           >
             <Settings size={20} />

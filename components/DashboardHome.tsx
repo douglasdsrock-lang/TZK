@@ -12,22 +12,25 @@ import {
   Flame,
   Sword,
   Lock,
+  Clock,
   ChevronRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from './AuthGuard';
-import { getAvatarUrl } from '@/lib/utils';
+import { getAvatarUrl, formatDate } from '@/lib/utils';
 import { StudentAvatar } from './StudentAvatar';
+import { getCharacterById } from '@/lib/characters';
 
 import { supabase } from '@/lib/supabase';
 import { useCallback } from 'react';
 
-export function DashboardHome() {
+export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: string }) {
   const { user } = useAuth();
   const [studentData, setStudentData] = useState<any>(null);
   const [currentMission, setCurrentMission] = useState<any>(null);
   const [lockedMission, setLockedMission] = useState<any>(null);
   const [eventMission, setEventMission] = useState<any>(null);
+  const [eventAchievement, setEventAchievement] = useState<any>(null);
   const [rankPosition, setRankPosition] = useState<string>('...');
   const [nextLevelTarget, setNextLevelTarget] = useState<number>(10);
   const [nextLevelAchievement, setNextLevelAchievement] = useState<any>(null);
@@ -40,19 +43,32 @@ export function DashboardHome() {
       const { data: student, error: studentError } = await supabase
         .from('students')
         .select('*')
-        .eq('email', user.email)
-        .single();
+        .eq('id', user.id)
+        .maybeSingle();
 
-      if (studentError && studentError.code !== 'PGRST116') throw studentError;
+      if (studentError) throw studentError;
       
-      const mappedStudent = student ? {
-        id: student.id,
-        firstName: student.first_name,
-        lastName: student.last_name,
-        email: student.email,
-        class: student.class,
-        level: student.level,
-        achievements: student.achievements || []
+      // Fallback to email if id not found (for legacy records)
+      let finalStudent = student;
+      if (!finalStudent) {
+        const { data: studentByEmail } = await supabase
+          .from('students')
+          .select('*')
+          .eq('email', user.email)
+          .maybeSingle();
+        finalStudent = studentByEmail;
+      }
+
+      const mappedStudent = finalStudent ? {
+        id: finalStudent.id,
+        firstName: finalStudent.first_name,
+        lastName: finalStudent.last_name,
+        email: finalStudent.email,
+        class: finalStudent.class,
+        level: finalStudent.level,
+        gender: finalStudent.gender,
+        characterId: finalStudent.character_id,
+        achievements: finalStudent.achievements || []
       } : null;
       
       setStudentData(mappedStudent);
@@ -60,7 +76,7 @@ export function DashboardHome() {
       // 2. Fetch all students for rank
       const { data: allStudents } = await supabase
         .from('students')
-        .select('email, level, achievements')
+        .select('id, email, level, achievements')
         .order('level', { ascending: false });
 
       if (allStudents) {
@@ -68,7 +84,7 @@ export function DashboardHome() {
           if ((b.level || 0) !== (a.level || 0)) return (b.level || 0) - (a.level || 0);
           return (b.achievements?.length || 0) - (a.achievements?.length || 0);
         });
-        const pos = sorted.findIndex((s: any) => s.email === user.email);
+        const pos = sorted.findIndex((s: any) => s.id === user.id || s.email === user.email);
         if (pos !== -1) setRankPosition(`#${pos + 1}`);
       }
 
@@ -79,25 +95,9 @@ export function DashboardHome() {
       if (achievements && missions) {
         const now = new Date();
         
-        // Event mission
-        const activeTimed = missions
-          .filter((m: any) => {
-            if (m.type !== 'timed' && m.type !== 'event') return false;
-            if (!m.deadline) return true;
-            return new Date(m.deadline) > now;
-          })
-          .sort((a: any, b: any) => new Date(a.deadline || 0).getTime() - new Date(b.deadline || 0).getTime());
-        
-        setEventMission(activeTimed[0] || null);
-
         if (mappedStudent) {
           const studentLevel = mappedStudent.level || 1;
           const studentAchievements = mappedStudent.achievements || [];
-
-          // Standard missions
-          const standardMissions = missions
-            .filter((m: any) => m.type === 'standard')
-            .sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
 
           const completedMissionIds = studentAchievements
             .map((sa: any) => {
@@ -105,6 +105,34 @@ export function DashboardHome() {
               return missions.find(m => m.linked_achievement_id === ach?.id)?.id;
             })
             .filter(Boolean);
+
+          // Event mission
+          const activeTimed = missions
+            .filter((m: any) => {
+              if (m.type !== 'timed' && m.type !== 'event') return false;
+              if (completedMissionIds.includes(m.id)) return false; // Filter out completed
+              if (!m.deadline) return true;
+              const d = new Date(m.deadline);
+              return !isNaN(d.getTime()) && d > now;
+            })
+            .sort((a: any, b: any) => {
+              const da = new Date(a.deadline || 0).getTime();
+              const db = new Date(b.deadline || 0).getTime();
+              return (isNaN(da) ? 0 : da) - (isNaN(db) ? 0 : db);
+            });
+          
+          setEventMission(activeTimed[0] || null);
+          if (activeTimed[0]?.linked_achievement_id) {
+            const ach = achievements.find(a => a.id === activeTimed[0].linked_achievement_id);
+            setEventAchievement(ach || null);
+          } else {
+            setEventAchievement(null);
+          }
+
+          // Standard missions
+          const standardMissions = missions
+            .filter((m: any) => m.type === 'standard')
+            .sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
 
           const nextMission = standardMissions.find(m => !completedMissionIds.includes(m.id));
           setCurrentMission(nextMission || null);
@@ -203,37 +231,86 @@ export function DashboardHome() {
     checkAutoUnlock();
   }, [studentData, user]);
 
+  const character = getCharacterById(studentData?.characterId);
+  const themeColor = propThemeColor || character?.color || '#F74C00';
+
   const stats = [
-    { label: 'Total de Conquistas', value: studentData?.achievements?.length || 0, icon: Trophy, color: 'text-[#F74C00]' },
-    { label: 'Nível Atual', value: studentData?.level || 0, icon: Star, color: 'text-[#FFDA1F]' },
-    { label: 'Rank Global', value: rankPosition, icon: Shield, color: 'text-blue-400' },
+    { 
+      label: 'Total de Conquistas', 
+      value: studentData?.achievements?.length || 0, 
+      icon: Trophy, 
+      color: themeColor
+    },
+    { 
+      label: 'Nível Atual', 
+      value: studentData?.level || 0, 
+      icon: Star, 
+      color: themeColor
+    },
+    { 
+      label: 'Rank Global', 
+      value: rankPosition, 
+      icon: Shield, 
+      color: themeColor
+    },
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div 
+      className="space-y-8 animate-in fade-in duration-700"
+      style={{ '--theme-color': themeColor } as any}
+    >
       {/* Welcome Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-[#151518] border border-white/5 p-6 md:p-10">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-[#F74C00]/10 to-transparent pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-          <div className="relative">
-            <div className="w-24 h-24 md:w-32 md:h-32">
-              <StudentAvatar 
-                src={user?.user_metadata?.avatar_url || undefined}
-                firstName={user?.user_metadata?.full_name?.split(' ')[0] || 'User'}
-                lastName={user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || ''}
-                gender={studentData?.gender}
-                className="w-full h-full"
-              />
+      <section 
+        className="relative z-[60] overflow-visible rounded-3xl bg-white/5 backdrop-blur-xl border p-6 md:p-10 shadow-[0_0_40px_rgba(0,0,0,0.15)]"
+        style={{ 
+          borderColor: `${themeColor}33`,
+          boxShadow: `0 0 40px ${themeColor}26`
+        }}
+      >
+        <div 
+          className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none rounded-3xl"
+          style={{ backgroundImage: `linear-gradient(to bottom right, rgba(255,255,255,0.1), ${themeColor}0D, ${themeColor}1A)` }}
+        ></div>
+        <div 
+          className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-transparent to-transparent pointer-events-none rounded-3xl"
+          style={{ backgroundImage: `linear-gradient(to left, ${themeColor}1A, transparent)` }}
+        ></div>
+        <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 md:gap-12">
+          <div className="relative mt-12 mb-16 md:mt-0 md:mb-0">
+            <div className="w-24 h-24 md:w-32 md:h-32 bg-[#0A0A0B] rounded-2xl border border-white/10 flex items-center justify-center overflow-visible">
+              {character ? (
+                <div className="relative w-full h-full">
+                  <Image 
+                    src={character.fullImage}
+                    alt={character.name}
+                    width={240}
+                    height={240}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] max-w-none h-auto z-20 pointer-events-none"
+                    style={{ filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.8))' }}
+                    unoptimized
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              ) : (
+                <StudentAvatar 
+                  src={user?.user_metadata?.avatar_url || undefined}
+                  firstName={user?.user_metadata?.full_name?.split(' ')[0] || 'User'}
+                  lastName={user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || ''}
+                  gender={studentData?.gender}
+                  className="w-full h-full"
+                />
+              )}
             </div>
-            <div className="absolute -bottom-2 -right-2 md:-bottom-3 md:-right-3 w-8 h-8 md:w-10 md:h-10 bg-[#FFDA1F] text-black font-black rounded-lg flex items-center justify-center border-4 border-[#151518] text-xs md:text-sm">
+            <div className="absolute -bottom-2 -right-2 md:-bottom-3 md:-right-3 w-8 h-8 md:w-10 md:h-10 bg-[#FFDA1F] text-black font-black rounded-lg flex items-center justify-center border-4 border-[#151518] text-xs md:text-sm z-30">
               {studentData?.level || 1}
             </div>
           </div>
           
-          <div className="flex-1 text-center md:text-left space-y-4">
+          <div className="flex-1 text-center md:text-left space-y-4 md:pl-16">
             <div>
               <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
-                BEM-VINDO, <span className="text-[#F74C00] uppercase">{studentData?.firstName || user?.user_metadata?.full_name?.split(' ')[0] || 'JOGADOR'}</span>
+                BEM-VINDO, <span className="uppercase" style={{ color: themeColor }}>{studentData?.firstName || user?.user_metadata?.full_name?.split(' ')[0] || 'JOGADOR'}</span>
               </h1>
               <p className="text-gray-400 mt-1 text-sm md:text-base">Sua jornada continua. {eventMission ? '1 evento especial' : '3 novas missões'} disponível hoje.</p>
             </div>
@@ -252,7 +329,11 @@ export function DashboardHome() {
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(100, ((studentData?.level || 0) / nextLevelTarget) * 100)}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-[#F74C00] to-[#FFDA1F] rounded-full shadow-[0_0_10px_rgba(247,76,0,0.3)]"
+                  className="h-full rounded-full"
+                  style={{ 
+                    background: `linear-gradient(to right, ${themeColor}, #FFDA1F)`,
+                    boxShadow: `0 0 10px ${themeColor}4D`
+                  }}
                 />
               </div>
               <p className="text-[10px] text-gray-500 font-mono">
@@ -260,11 +341,6 @@ export function DashboardHome() {
               </p>
             </div>
           </div>
-
-          <button className="w-full md:w-auto px-8 py-4 bg-[#F74C00] hover:bg-[#ff5a14] text-white font-bold rounded-2xl transition-all active:scale-95 shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2">
-            <Zap size={20} />
-            RETOMAR MISSÃO
-          </button>
         </div>
       </section>
 
@@ -276,13 +352,22 @@ export function DashboardHome() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-[#151518] border border-white/5 p-6 rounded-2xl flex items-center gap-5 group hover:border-[#F74C00]/30 transition-all"
+            className="relative overflow-hidden bg-[#151518]/40 backdrop-blur-xl border p-6 rounded-2xl flex items-center gap-5 group hover:scale-[1.02] transition-all duration-300"
+            style={{ borderColor: `${stat.color}33` }}
           >
-            <div className={`w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
+            <div 
+              className="absolute inset-0 opacity-50 pointer-events-none" 
+              style={{ backgroundImage: `linear-gradient(to bottom right, ${stat.color}1A, transparent)` }}
+            />
+            
+            <div 
+              className="relative z-10 w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform"
+              style={{ color: stat.color }}
+            >
               <stat.icon size={28} />
             </div>
-            <div>
-              <p className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">{stat.label}</p>
+            <div className="relative z-10">
+              <p className="text-xs font-mono font-bold text-gray-400 uppercase tracking-widest">{stat.label}</p>
               <p className="text-3xl font-display font-black mt-1">{stat.value}</p>
             </div>
           </motion.div>
@@ -291,11 +376,17 @@ export function DashboardHome() {
 
       {/* Next Mission & Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-[#151518] border border-white/5 rounded-3xl p-8 space-y-6">
-          <div className="flex items-center justify-between">
+        <div 
+          className="relative overflow-hidden bg-[#F74C00]/5 backdrop-blur-xl border rounded-3xl p-8 space-y-6"
+          style={{ 
+            backgroundColor: `${themeColor}0D`,
+            borderColor: `${themeColor}33`
+          }}
+        >
+          <div className="relative z-10 flex items-center justify-between">
             <h3 className="text-xl font-display font-bold flex items-center gap-2">
-              <Target className="text-[#F74C00]" size={24} />
-              MISSÕES DA JORNADA
+              <Target style={{ color: themeColor }} size={24} />
+              SUAS MISSÕES
             </h3>
           </div>
           
@@ -304,15 +395,27 @@ export function DashboardHome() {
             <div>
               <p className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Missão Atual</p>
               {currentMission ? (
-                <div className="bg-[#0A0A0B] border border-[#F74C00]/20 rounded-2xl p-6 flex items-start gap-4 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-[#F74C00]/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-[#F74C00]/10 transition-all"></div>
-                  <div className="w-12 h-12 rounded-xl bg-[#F74C00]/10 flex items-center justify-center text-[#F74C00] shrink-0 relative z-10">
+                <div 
+                  className="bg-[#0A0A0B] border rounded-2xl p-6 flex items-start gap-4 relative overflow-hidden group"
+                  style={{ borderColor: `${themeColor}33` }}
+                >
+                  <div 
+                    className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 blur-2xl group-hover:opacity-100 opacity-50 transition-all"
+                    style={{ backgroundColor: themeColor }}
+                  ></div>
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 relative z-10"
+                    style={{ backgroundColor: `${themeColor}1A`, color: themeColor }}
+                  >
                     <Sword size={24} />
                   </div>
                   <div className="space-y-2 relative z-10">
                     <div className="flex items-center gap-2">
                       <h4 className="font-bold text-lg uppercase">{currentMission.title}</h4>
-                      <span className="text-[9px] font-mono font-bold bg-[#F74C00] text-white px-2 py-0.5 rounded">ATIVO</span>
+                      <span 
+                      className="text-[9px] font-mono font-bold text-white px-2 py-0.5 rounded"
+                      style={{ backgroundColor: themeColor }}
+                    >ATIVO</span>
                     </div>
                     <p className="text-sm text-gray-400 leading-relaxed">
                       {currentMission.description || 'Nenhuma descrição disponível.'}
@@ -346,20 +449,40 @@ export function DashboardHome() {
           </div>
         </div>
 
-        <div className="bg-[#151518] border border-white/5 rounded-3xl p-8 space-y-6">
-          <div className="flex items-center justify-between">
+        <div 
+          className="relative overflow-hidden bg-[#151518]/40 backdrop-blur-xl border rounded-3xl p-8 space-y-6"
+          style={{ borderColor: `${themeColor}33` }}
+        >
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}0D, transparent)` }}
+          ></div>
+          <div className="relative z-10 flex items-center justify-between">
             <h3 className="text-xl font-display font-bold flex items-center gap-2">
-              <Flame className="text-[#FFDA1F]" size={24} />
+              <Flame style={{ color: themeColor }} size={24} />
               EVENTO TEMPORÁRIO
             </h3>
-            <span className="text-[10px] font-mono font-bold bg-[#FFDA1F]/10 text-[#FFDA1F] px-3 py-1 rounded-full border border-[#FFDA1F]/20 animate-pulse">
+            <span 
+              className="text-[10px] font-mono font-bold px-3 py-1 rounded-full border animate-pulse"
+              style={{ 
+                backgroundColor: `${themeColor}1A`, 
+                color: themeColor,
+                borderColor: `${themeColor}33`
+              }}
+            >
               AO VIVO
             </span>
           </div>
           
           {eventMission ? (
-            <div className="bg-[#0A0A0B] border border-white/5 rounded-2xl p-6 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#FFDA1F]/10 flex items-center justify-center text-[#FFDA1F] shrink-0">
+            <div 
+              className="bg-[#0A0A0B] border rounded-2xl p-6 flex items-start gap-4"
+              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+            >
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${themeColor}1A`, color: themeColor }}
+              >
                 <Zap size={24} />
               </div>
               <div className="space-y-2">
@@ -367,11 +490,6 @@ export function DashboardHome() {
                 <p className="text-sm text-gray-400 leading-relaxed">
                   {eventMission.description || 'Nenhuma descrição disponível.'}
                 </p>
-                {eventMission.deadline && (
-                  <p className="text-[10px] font-mono text-[#FFDA1F] uppercase mt-2">
-                    Expira em: {eventMission.deadline.toDate ? eventMission.deadline.toDate().toLocaleDateString() : new Date(eventMission.deadline).toLocaleDateString()}
-                  </p>
-                )}
               </div>
             </div>
           ) : (
@@ -382,12 +500,22 @@ export function DashboardHome() {
           
           <div className="pt-4 grid grid-cols-2 gap-4">
             <div className="bg-[#0A0A0B] p-4 rounded-2xl border border-white/5 text-center">
-              <p className="text-[10px] font-mono text-gray-500 uppercase">Sequência Semanal</p>
-              <p className="text-2xl font-display font-black text-[#FFDA1F]">14 DIAS</p>
+              <p className="text-[10px] font-mono text-gray-500 uppercase">Tempo Restante</p>
+              <p className="text-xl md:text-2xl font-display font-black uppercase" style={{ color: themeColor }}>
+                {eventMission?.deadline ? (() => {
+                  const now = new Date();
+                  const end = new Date(eventMission.deadline);
+                  const diff = end.getTime() - now.getTime();
+                  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                  return days > 0 ? `${days} DIAS` : 'HOJE';
+                })() : '--'}
+              </p>
             </div>
-            <div className="bg-[#0A0A0B] p-4 rounded-2xl border border-white/5 text-center">
-              <p className="text-[10px] font-mono text-gray-500 uppercase">Pontos de Habilidade</p>
-              <p className="text-2xl font-display font-black text-blue-400">2.450</p>
+            <div className="bg-[#0A0A0B] p-4 rounded-2xl border border-white/5 text-center flex flex-col justify-center">
+              <p className="text-[10px] font-mono text-gray-500 uppercase">Recompensa</p>
+              <p className="text-sm md:text-base font-display font-black uppercase line-clamp-1" style={{ color: '#FFDA1F' }}>
+                {eventAchievement ? eventAchievement.name : 'NENHUMA'}
+              </p>
             </div>
           </div>
         </div>

@@ -4,6 +4,33 @@
 :root {
   --background: #0A0A0A;
   --foreground: #FFFFFF;
+  --theme-orange: #F74C00;
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F0F12;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2A2A2E;
+  border-radius: 10px;
+  border: 2px solid #0F0F12;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-orange);
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2A2A2E #0F0F12;
 }
 
 body {
