@@ -36,10 +36,8 @@ export function CharacterSpeech({ characterId, message }: CharacterSpeechProps) 
         </motion.div>
       </AnimatePresence>
 
-      <motion.div
-        initial={{ opacity: 0, y: 100 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-32 h-48 md:w-48 md:h-72 relative shrink-0"
+      <div
+        className="w-32 h-48 md:w-48 md:h-72 relative shrink-0 bg-red-500"
       >
         <Image
           src={character.fullImage}
@@ -48,7 +46,7 @@ export function CharacterSpeech({ characterId, message }: CharacterSpeechProps) 
           unoptimized={true}
           className="object-contain object-bottom"
         />
-      </motion.div>
+      </div>
     </div>
   );
 }
