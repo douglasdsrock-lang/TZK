@@ -36,17 +36,19 @@ export function CharacterSpeech({ characterId, message }: CharacterSpeechProps) 
         </motion.div>
       </AnimatePresence>
 
-      <div
-        className="w-32 h-48 md:w-48 md:h-72 relative shrink-0 bg-red-500"
+      <motion.div
+        initial={{ opacity: 0, y: 100 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-32 h-48 md:w-48 md:h-72 relative shrink-0"
       >
         <Image
-          src={character.fullImage}
+          src={character.fullImage.startsWith('/') ? character.fullImage : `/${character.fullImage}`}
           alt={character.name}
           fill
           unoptimized={true}
           className="object-contain object-bottom"
         />
-      </div>
+      </motion.div>
     </div>
   );
 }
