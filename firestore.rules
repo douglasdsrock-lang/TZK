@@ -99,7 +99,7 @@ service cloud.firestore {
              data.category is string && data.category.size() > 0 &&
              data.level is number && data.level >= 0 &&
              data.type in ['standard', 'level'] &&
-             (!('requiredLevel' in data) || data.requiredLevel is number) &&
+             (!('required_level' in data) || data.required_level is number) &&
              data.createdAt is timestamp &&
              data.updatedAt is timestamp;
     }

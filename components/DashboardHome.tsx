@@ -13,9 +13,12 @@ import {
   Sword,
   Lock,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Megaphone,
+  X,
+  Calendar
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from './AuthGuard';
 import { getAvatarUrl, formatDate } from '@/lib/utils';
 import { StudentAvatar } from './StudentAvatar';
@@ -25,7 +28,7 @@ import { supabase } from '@/lib/supabase';
 import { useCallback } from 'react';
 
 export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: string }) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [studentData, setStudentData] = useState<any>(null);
   const [currentMission, setCurrentMission] = useState<any>(null);
   const [lockedMission, setLockedMission] = useState<any>(null);
@@ -34,11 +37,15 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
   const [rankPosition, setRankPosition] = useState<string>('...');
   const [nextLevelTarget, setNextLevelTarget] = useState<number>(10);
   const [nextLevelAchievement, setNextLevelAchievement] = useState<any>(null);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<any>(null);
 
   const fetchData = useCallback(async () => {
     if (!user || !user.email) return;
 
     try {
+      console.log('Buscando dados para:', user.email, 'Admin:', isAdmin);
+      
       // 1. Fetch student data
       const { data: student, error: studentError } = await supabase
         .from('students')
@@ -48,15 +55,33 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
 
       if (studentError) throw studentError;
       
-      // Fallback to email if id not found (for legacy records)
       let finalStudent = student;
-      if (!finalStudent) {
-        const { data: studentByEmail } = await supabase
+      
+      // Se for admin e não tiver registro, criar um automaticamente para testes
+      if (!finalStudent && isAdmin) {
+        console.log('Admin sem registro de aluno. Criando registro de teste...');
+        const { data: newStudent, error: createError } = await supabase
           .from('students')
-          .select('*')
-          .eq('email', user.email)
-          .maybeSingle();
-        finalStudent = studentByEmail;
+          .insert([{
+            id: user.id,
+            email: user.email,
+            first_name: 'Admin',
+            last_name: 'System',
+            level: 1,
+            gender: 'male',
+            class: 'Admin',
+            achievements: []
+          }])
+          .select()
+          .single();
+        
+        if (!createError) {
+          finalStudent = newStudent;
+          alert('Perfil de administrador criado com sucesso! Recarregando dados...');
+        } else {
+          console.error('Erro ao criar registro de admin:', createError);
+          alert(`Erro ao criar perfil de admin: ${JSON.stringify(createError, null, 2)}`);
+        }
       }
 
       const mappedStudent = finalStudent ? {
@@ -95,9 +120,9 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
       if (achievements && missions) {
         const now = new Date();
         
-        if (mappedStudent) {
-          const studentLevel = mappedStudent.level || 1;
-          const studentAchievements = mappedStudent.achievements || [];
+        if (mappedStudent || isAdmin) {
+          const studentLevel = mappedStudent?.level || 1;
+          const studentAchievements = mappedStudent?.achievements || [];
 
           const completedMissionIds = studentAchievements
             .map((sa: any) => {
@@ -152,12 +177,21 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
             setNextLevelAchievement(nextLevelAch);
             setNextLevelTarget(nextLevelAch.required_level);
           }
+
+          // 4. Fetch Announcements
+          const { data: annData } = await supabase
+            .from('announcements')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(3);
+          
+          setAnnouncements(annData || []);
         }
       }
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error.message || error);
     }
-  }, [user]);
+  }, [user, isAdmin]);
 
   useEffect(() => {
     fetchData();
@@ -177,10 +211,16 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
       .on('postgres_changes', { event: '*', schema: 'public', table: 'achievements' }, () => fetchData())
       .subscribe();
 
+    const announcementsChannel = supabase
+      .channel('public:dashboard_announcements')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => fetchData())
+      .subscribe();
+
     return () => {
       supabase.removeChannel(studentsChannel);
       supabase.removeChannel(missionsChannel);
       supabase.removeChannel(achievementsChannel);
+      supabase.removeChannel(announcementsChannel);
     };
   }, [user, fetchData]);
 
@@ -225,6 +265,26 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
             updated_at: new Date().toISOString()
           })
           .eq('id', studentData.id);
+
+        // Create notifications for auto-unlocked achievements
+        const notifications = toUnlock.map(a => ({
+          user_id: studentData.id,
+          title: 'Conquista Desbloqueada! 🏆',
+          message: `Você liberou a conquista: ${a.name}`,
+          type: 'achievement'
+        }));
+
+        // Notification for level up if level increased
+        if (newLevel > (studentData.level || 0)) {
+          notifications.push({
+            user_id: studentData.id,
+            title: 'Subiu de Nível! ⚡',
+            message: `Parabéns! Você alcançou o nível ${newLevel}`,
+            type: 'level'
+          });
+        }
+
+        await supabase.from('notifications').insert(notifications);
       }
     };
 
@@ -262,7 +322,7 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
     >
       {/* Welcome Hero */}
       <section 
-        className="relative z-[60] overflow-visible rounded-3xl bg-white/5 backdrop-blur-xl border p-6 md:p-10 shadow-[0_0_40px_rgba(0,0,0,0.15)]"
+        className="relative z-[60] overflow-visible rounded-3xl bg-white/5 backdrop-blur-xl border p-6 md:p-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] mt-8 md:mt-12"
         style={{ 
           borderColor: `${themeColor}33`,
           boxShadow: `0 0 40px ${themeColor}26`
@@ -286,7 +346,7 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
                     alt={character.name}
                     width={240}
                     height={240}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] max-w-none h-auto z-20 pointer-events-none"
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] max-w-none h-auto z-[991] pointer-events-none"
                     style={{ filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.8))' }}
                     unoptimized
                     referrerPolicy="no-referrer"
@@ -374,6 +434,132 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
         ))}
       </div>
 
+      {/* Announcements Panel */}
+      {announcements.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Megaphone className="h-5 w-5" style={{ color: themeColor }} />
+            <h3 className="text-lg font-display font-bold uppercase tracking-wider text-white">Comunicados</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {announcements.map((ann, i) => (
+              <motion.div
+                key={ann.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                onClick={() => setSelectedAnnouncement(ann)}
+                className="group relative cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-md p-5 transition-all hover:bg-white/[0.08] hover:translate-y-[-4px]"
+                style={{ 
+                  '--hover-color': themeColor,
+                } as React.CSSProperties}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-1.5 h-1.5 rounded-full" 
+                      style={{ backgroundColor: themeColor, boxShadow: `0 0 8px ${themeColor}` }}
+                    />
+                    <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-tighter">
+                      {formatDate(ann.created_at)}
+                    </span>
+                  </div>
+                  <ArrowUpRight className="h-3 w-3 text-gray-600 group-hover:text-[var(--hover-color)] transition-colors" />
+                </div>
+                <h4 className="text-base font-bold text-white mb-2 line-clamp-1 group-hover:text-[var(--hover-color)] transition-colors">
+                  {ann.title}
+                </h4>
+                <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                  {ann.content}
+                </p>
+                
+                {/* Dynamic Border on Hover */}
+                <div 
+                  className="absolute inset-0 border border-transparent group-hover:border-[var(--hover-color)]/30 rounded-2xl transition-colors pointer-events-none"
+                  style={{ '--hover-color': themeColor } as React.CSSProperties}
+                />
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Announcement Modal */}
+      <AnimatePresence>
+        {selectedAnnouncement && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedAnnouncement(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#151518]/90 backdrop-blur-2xl shadow-2xl"
+            >
+              <div 
+                className="absolute top-0 left-0 w-full h-1"
+                style={{ backgroundColor: themeColor }}
+              />
+              
+              <div className="p-8 md:p-10">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="p-2 rounded-xl bg-white/5"
+                      style={{ color: themeColor }}
+                    >
+                      <Megaphone className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-display font-black text-white uppercase tracking-tight">
+                        Comunicado
+                      </h3>
+                      <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 uppercase mt-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>Publicado em {formatDate(selectedAnnouncement.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedAnnouncement(null)}
+                    className="p-2 rounded-full bg-white/5 text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <h4 className="text-xl font-bold text-white leading-tight">
+                    {selectedAnnouncement.title}
+                  </h4>
+                  <div className="h-px bg-white/5 w-full" />
+                  <div className="max-h-[40vh] overflow-y-auto pr-4 custom-scrollbar">
+                    <p className="text-gray-300 leading-relaxed whitespace-pre-wrap text-lg">
+                      {selectedAnnouncement.content}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-10 flex justify-end">
+                  <button
+                    onClick={() => setSelectedAnnouncement(null)}
+                    className="px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 active:scale-95"
+                    style={{ backgroundColor: themeColor }}
+                  >
+                    ENTENDIDO
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Next Mission & Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div 
@@ -396,8 +582,8 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
               <p className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Missão Atual</p>
               {currentMission ? (
                 <div 
-                  className="bg-[#0A0A0B] border rounded-2xl p-6 flex items-start gap-4 relative overflow-hidden group"
-                  style={{ borderColor: `${themeColor}33` }}
+                  className="bg-white/[0.03] backdrop-blur-md border rounded-2xl p-6 flex items-start gap-4 relative overflow-hidden group"
+                  style={{ borderColor: `${themeColor}26` }}
                 >
                   <div 
                     className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 blur-2xl group-hover:opacity-100 opacity-50 transition-all"
@@ -413,9 +599,9 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
                     <div className="flex items-center gap-2">
                       <h4 className="font-bold text-lg uppercase">{currentMission.title}</h4>
                       <span 
-                      className="text-[9px] font-mono font-bold text-white px-2 py-0.5 rounded"
-                      style={{ backgroundColor: themeColor }}
-                    >ATIVO</span>
+                        className="text-[9px] font-mono font-bold text-white px-2 py-0.5 rounded-full border"
+                        style={{ backgroundColor: `${themeColor}33`, borderColor: `${themeColor}4D` }}
+                      >ATIVO</span>
                     </div>
                     <p className="text-sm text-gray-400 leading-relaxed">
                       {currentMission.description || 'Nenhuma descrição disponível.'}
@@ -476,8 +662,8 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
           
           {eventMission ? (
             <div 
-              className="bg-[#0A0A0B] border rounded-2xl p-6 flex items-start gap-4"
-              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+              className="bg-white/[0.03] backdrop-blur-md border rounded-2xl p-6 flex items-start gap-4"
+              style={{ borderColor: 'rgba(255,255,255,0.08)' }}
             >
               <div 
                 className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"

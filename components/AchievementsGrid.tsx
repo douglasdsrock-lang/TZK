@@ -345,7 +345,7 @@ export function AchievementsGrid({ themeColor }: { themeColor: string }) {
                   <div className="flex items-center gap-1">
                     <Star size={12} className={isUnlocked ? 'text-[#FFDA1F]' : 'text-gray-700'} />
                     <span className="text-[10px] font-mono font-bold text-gray-500 uppercase">
-                      {achievement.type === 'level' ? `ALVO: NÍVEL ${achievement.requiredLevel}` : `GANHA: +${achievement.level} NÍVEL`}
+                      {achievement.type === 'level' ? `ALVO: NÍVEL ${achievement.required_level}` : `GANHA: +${achievement.level} NÍVEL`}
                     </span>
                   </div>
                   {isUnlocked && (
@@ -481,7 +481,7 @@ export function AchievementsGrid({ themeColor }: { themeColor: string }) {
                     <div className="flex items-center justify-center gap-2 text-[#FFDA1F]">
                       <Star size={16} fill="currentColor" />
                       <span className="font-display font-black text-xl">
-                        {selectedAchievement.type === 'level' ? `NÍVEL ${selectedAchievement.requiredLevel}` : `+${selectedAchievement.level} NÍVEL`}
+                        {selectedAchievement.type === 'level' ? `CONQUISTA DE NÍVEL` : `+${selectedAchievement.level} NÍVEL`}
                       </span>
                     </div>
                   </div>

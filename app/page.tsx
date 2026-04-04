@@ -11,6 +11,7 @@ import { AccountSettings } from '@/components/AccountSettings';
 import { StudentManagement } from '@/components/StudentManagement';
 import { AchievementManagement } from '@/components/AchievementManagement';
 import { MissionManagement } from '@/components/MissionManagement';
+import { CommunicationManagement } from '@/components/CommunicationManagement';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { supabase } from '@/lib/supabase';
@@ -128,6 +129,8 @@ function DashboardContent() {
         return isAdmin ? <AchievementManagement /> : <DashboardHome themeColor={themeColor} />;
       case 'mission-management':
         return isAdmin ? <MissionManagement /> : <DashboardHome themeColor={themeColor} />;
+      case 'communication':
+        return isAdmin ? <CommunicationManagement /> : <DashboardHome themeColor={themeColor} />;
       default:
         return <DashboardHome themeColor={themeColor} />;
     }
@@ -152,7 +155,7 @@ function DashboardContent() {
           themeColor={themeColor}
         />
         
-        <main className="flex-1 p-4 md:p-8 overflow-visible relative z-50">
+        <main className="flex-1 p-4 md:p-8 pt-12 md:pt-16 overflow-visible relative">
           <ErrorBoundary>
             {renderContent()}
           </ErrorBoundary>

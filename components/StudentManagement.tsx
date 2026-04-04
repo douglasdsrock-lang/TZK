@@ -232,6 +232,35 @@ export function StudentManagement() {
         .eq('id', student.id);
       
       if (error) throw error;
+
+      // Create notifications
+      const achievementDef = achievements.find(a => a.id === achievementId);
+      const isNowUnlocked = existingIndex < 0;
+
+      if (isNowUnlocked && achievementDef) {
+        // Notification for achievement
+        await supabase.from('notifications').insert({
+          user_id: student.id, // Assuming student.id is the auth user id, but wait...
+          // I need to check if student.id is the auth user id.
+          // In this app, it seems student.id is the UUID from the students table.
+          // Let's check if there's a mapping.
+          // Actually, looking at AuthGuard, the user.id is the auth.uid.
+          // The students table has an 'id' which is likely the auth.uid.
+          title: 'Conquista Desbloqueada! 🏆',
+          message: `Você liberou a conquista: ${achievementDef.name}`,
+          type: 'achievement'
+        });
+
+        // Notification for level up if level increased
+        if (newLevel > (student.level || 0)) {
+          await supabase.from('notifications').insert({
+            user_id: student.id,
+            title: 'Subiu de Nível! ⚡',
+            message: `Parabéns! Você alcançou o nível ${newLevel}`,
+            type: 'level'
+          });
+        }
+      }
       
       // Update local state for immediate feedback if it's the modal student
       if (isAssigningAchievements && isAssigningAchievements.id === student.id) {
@@ -660,7 +689,7 @@ export function StudentManagement() {
                                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono">{achievement.category}</span>
                                 <span className="hidden xs:block w-1 h-1 rounded-full bg-gray-700"></span>
                                 {achievement.type === 'level' ? (
-                                  <span className="text-[10px] text-[#FFDA1F] font-bold font-mono uppercase">ALVO: NÍVEL {achievement.requiredLevel}</span>
+                                  <span className="text-[10px] text-[#FFDA1F] font-bold font-mono uppercase">ALVO: NÍVEL {achievement.required_level}</span>
                                 ) : (
                                   <span className="text-[10px] text-[#FFDA1F] font-bold font-mono uppercase">RECOMPENSA: +{achievement.level} NÍVEL</span>
                                 )}

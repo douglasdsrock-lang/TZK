@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useAuth } from './AuthGuard';
 import { cn, formatDate } from '@/lib/utils';
 
 const missionSchema = z.object({
@@ -46,6 +47,7 @@ interface Mission {
 }
 
 export function MissionManagement() {
+  const { user: currentUser } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -148,10 +150,29 @@ export function MissionManagement() {
           .eq('id', editingMission.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { data: newMission, error } = await supabase
           .from('missions')
-          .insert([payload]);
+          .insert([payload])
+          .select()
+          .single();
         if (error) throw error;
+
+        // Create notifications for all students
+        const { data: students } = await supabase.from('students').select('id');
+        const studentIds = new Set(students?.map(s => s.id) || []);
+        
+        // Ensure current user (admin) also gets the notification for testing/visibility
+        if (currentUser) studentIds.add(currentUser.id);
+
+        if (studentIds.size > 0) {
+          const notifications = Array.from(studentIds).map(id => ({
+            user_id: id,
+            title: data.type === 'timed' ? 'Novo Evento Temporário! ⏳' : 'Nova Missão Liberada! 🎯',
+            message: data.title,
+            type: data.type === 'timed' ? 'event' : 'mission'
+          }));
+          await supabase.from('notifications').insert(notifications);
+        }
       }
       closeModal();
     } catch (err: any) {

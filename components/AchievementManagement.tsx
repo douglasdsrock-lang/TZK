@@ -74,7 +74,7 @@ const achievementSchema = z.object({
   category: z.string().optional().or(z.literal('')),
   level: z.number().min(0, 'Nível de recompensa inválido'),
   type: z.enum(['standard', 'level']),
-  requiredLevel: z.number().optional().or(z.literal(NaN)).transform(v => (typeof v === 'number' && !isNaN(v)) ? v : 0),
+  requiredLevel: z.number().default(0),
 }).refine((data) => {
   if (data.type === 'standard' && (!data.category || data.category === '')) {
     return false;
@@ -185,7 +185,7 @@ export function AchievementManagement() {
   const [isSavingCategory, setIsSavingCategory] = useState(false);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<AchievementFormValues>({
-    resolver: zodResolver(achievementSchema),
+    resolver: zodResolver(achievementSchema) as any,
     defaultValues: {
       level: 1,
       icon: 'Trophy',

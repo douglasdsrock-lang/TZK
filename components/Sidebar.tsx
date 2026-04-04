@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Target,
   Medal,
+  Megaphone,
   X
 } from 'lucide-react';
 import { useAuth } from './AuthGuard';
@@ -39,18 +40,68 @@ export function Sidebar({
 }: SidebarProps) {
   const { isAdmin, logout } = useAuth();
 
-  const menuItems = [
+  const studentItems = [
     { id: 'home', label: 'Início', icon: Home },
     { id: 'ranking', label: 'Ranking Global', icon: Medal },
     { id: 'achievements', label: 'Minhas Conquistas', icon: Trophy },
     { id: 'account', label: 'Minha Conta', icon: User },
   ];
 
-  if (isAdmin) {
-    menuItems.push({ id: 'management', label: 'Gestão de Alunos', icon: Users });
-    menuItems.push({ id: 'achievement-management', label: 'Conquistas', icon: Trophy });
-    menuItems.push({ id: 'mission-management', label: 'Missões', icon: Target });
-  }
+  const adminItems = [
+    { id: 'management', label: 'Gestão de Alunos', icon: Users },
+    { id: 'achievement-management', label: 'Conquistas', icon: Trophy },
+    { id: 'mission-management', label: 'Missões', icon: Target },
+    { id: 'communication', label: 'Comunicação', icon: Megaphone },
+  ];
+
+  const renderMenuItem = (item: any) => {
+    const Icon = item.icon;
+    const isActive = activeTab === item.id;
+    
+    return (
+      <button
+        key={item.id}
+        onClick={() => setActiveTab(item.id)}
+        title={isCollapsed ? item.label : undefined}
+        className={cn(
+          "w-full flex items-center px-4 py-3.5 rounded-xl transition-all group relative overflow-hidden",
+          isActive 
+            ? "text-white" 
+            : "text-gray-400 hover:bg-white/5",
+          isCollapsed ? "justify-center" : "justify-between"
+        )}
+        style={{ 
+          backgroundColor: isActive ? `${themeColor}1A` : 'transparent',
+          color: isActive ? themeColor : undefined
+        }}
+        onMouseEnter={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.color = themeColor;
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.color = '';
+          }
+        }}
+      >
+        <div className="flex items-center gap-3 relative z-10">
+          <Icon size={20} className={cn(isActive ? "" : "text-gray-500 group-hover:text-white", "shrink-0")} style={{ color: isActive ? themeColor : undefined }} />
+          {!isCollapsed && <span className="font-semibold text-sm whitespace-nowrap">{item.label}</span>}
+        </div>
+        {isActive && (
+          <motion.div 
+            layoutId="active-pill"
+            className="absolute left-0 top-0 bottom-0 w-1"
+            style={{ backgroundColor: themeColor }}
+          />
+        )}
+        {!isCollapsed && (
+          <ChevronRight size={14} className={cn("transition-transform", isActive ? "opacity-100" : "opacity-0 group-hover:opacity-50")} />
+        )}
+      </button>
+    );
+  };
 
   return (
     <>
@@ -126,54 +177,20 @@ export function Sidebar({
             Menu Principal
           </p>
         )}
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              title={isCollapsed ? item.label : undefined}
-              className={cn(
-                "w-full flex items-center px-4 py-3.5 rounded-xl transition-all group relative overflow-hidden",
-                isActive 
-                  ? "text-white" 
-                  : "text-gray-400 hover:bg-white/5",
-                isCollapsed ? "justify-center" : "justify-between"
-              )}
-              style={{ 
-                backgroundColor: isActive ? `${themeColor}1A` : 'transparent',
-                color: isActive ? themeColor : undefined
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.color = themeColor;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.color = '';
-                }
-              }}
-            >
-              <div className="flex items-center gap-3 relative z-10">
-                <Icon size={20} className={cn(isActive ? "" : "text-gray-500 group-hover:text-white", "shrink-0")} style={{ color: isActive ? themeColor : undefined }} />
-                {!isCollapsed && <span className="font-semibold text-sm whitespace-nowrap">{item.label}</span>}
-              </div>
-              {isActive && (
-                <motion.div 
-                  layoutId="active-pill"
-                  className="absolute left-0 top-0 bottom-0 w-1"
-                  style={{ backgroundColor: themeColor }}
-                />
-              )}
-              {!isCollapsed && (
-                <ChevronRight size={14} className={cn("transition-transform", isActive ? "opacity-100" : "opacity-0 group-hover:opacity-50")} />
-              )}
-            </button>
-          );
-        })}
+        
+        {studentItems.map(renderMenuItem)}
+
+        {isAdmin && (
+          <>
+            <div className="h-px bg-white/5 my-6 mx-4" />
+            {!isCollapsed && (
+              <p className="px-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-[0.2em] mb-4">
+                Administração
+              </p>
+            )}
+            {adminItems.map(renderMenuItem)}
+          </>
+        )}
       </nav>
 
       <div className="p-4 border-t border-white/5">

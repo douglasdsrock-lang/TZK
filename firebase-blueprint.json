@@ -60,7 +60,7 @@
         "category": { "type": "string", "description": "Category like 'Clan', 'Mission', etc." },
         "level": { "type": "number", "description": "Level/weight of the achievement" },
         "type": { "type": "string", "enum": ["standard", "level"], "description": "Type of achievement" },
-        "requiredLevel": { "type": "number", "description": "Level required to unlock (for type 'level')" },
+        "required_level": { "type": "number", "description": "Level required to unlock (for type 'level')" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
