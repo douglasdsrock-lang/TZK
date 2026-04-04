@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
 import { getCharacterById } from '@/lib/characters';
 
 interface CharacterSpeechProps {
@@ -40,10 +41,12 @@ export function CharacterSpeech({ characterId, message }: CharacterSpeechProps) 
         animate={{ opacity: 1, y: 0 }}
         className="w-32 h-48 md:w-48 md:h-72 relative shrink-0"
       >
-        <img
-          src={character.fullImage.startsWith('/') ? character.fullImage : `/${character.fullImage}`}
+        <Image
+          src={character.fullImage}
           alt={character.name}
-          className="w-full h-full object-contain object-bottom"
+          fill
+          unoptimized={true}
+          className="object-contain object-bottom"
         />
       </motion.div>
     </div>
