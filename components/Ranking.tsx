@@ -284,7 +284,6 @@ export function Ranking({ themeColor }: { themeColor: string }) {
                                 alt={char.name}
                                 fill
                                 className="object-contain object-bottom p-4"
-                                referrerPolicy="no-referrer"
                                 unoptimized
                               />
                             </motion.div>

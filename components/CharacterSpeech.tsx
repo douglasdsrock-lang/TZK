@@ -46,7 +46,6 @@ export function CharacterSpeech({ characterId, message }: CharacterSpeechProps) 
           alt={character.name}
           fill
           className="object-contain object-bottom"
-          referrerPolicy="no-referrer"
           unoptimized
         />
       </motion.div>

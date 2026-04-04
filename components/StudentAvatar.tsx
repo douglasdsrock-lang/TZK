@@ -54,7 +54,6 @@ export function StudentAvatar({ firstName, lastName, gender, characterId, classN
           alt={character.name}
           fill
           className="object-cover"
-          referrerPolicy="no-referrer"
           unoptimized
         />
       </div>

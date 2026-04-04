@@ -199,7 +199,6 @@ export function AccountSettings() {
                 alt={userData?.firstName || 'User'}
                 fill
                 className="object-cover rounded-[14px]"
-                referrerPolicy="no-referrer"
                 unoptimized={!!selectedCharacter || !userData?.profilePhoto}
               />
             </div>
@@ -293,7 +292,6 @@ export function AccountSettings() {
                     alt={char.name}
                     fill
                     className="object-cover"
-                    referrerPolicy="no-referrer"
                     unoptimized
                   />
                   {selectedCharacterId === char.id && (
