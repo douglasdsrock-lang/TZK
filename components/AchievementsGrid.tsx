@@ -55,6 +55,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
 import { useAuth } from './AuthGuard';
 import { supabase } from '@/lib/supabase';
 import { soundManager } from '@/lib/sounds';
@@ -85,7 +86,7 @@ export function AchievementsGrid({ themeColor }: { themeColor: string }) {
       return function CustomIcon() {
         return (
           <div className="w-full h-full relative">
-            <img src={iconName} alt="Custom Icon" className="w-full h-full object-contain" />
+            <Image src={iconName} alt="Custom Icon" fill className="object-contain" />
           </div>
         );
       };

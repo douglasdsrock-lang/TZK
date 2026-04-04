@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Trophy, 
   Medal, 
@@ -30,23 +30,7 @@ export function Ranking({ themeColor }: { themeColor: string }) {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [currentUserData, setCurrentUserData] = useState<any>(null);
 
-  useEffect(() => {
-    fetchRanking();
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('public:students')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-        fetchRanking();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const fetchRanking = async () => {
+  const fetchRanking = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('students')
@@ -84,7 +68,23 @@ export function Ranking({ themeColor }: { themeColor: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.email]);
+
+  useEffect(() => {
+    fetchRanking();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('public:students')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+        fetchRanking();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchRanking]);
 
   const filteredStudents = students.filter(s => 
     `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
@@ -284,7 +284,6 @@ export function Ranking({ themeColor }: { themeColor: string }) {
                                 alt={char.name}
                                 fill
                                 className="object-contain object-bottom p-4"
-                                unoptimized
                               />
                             </motion.div>
                           </>

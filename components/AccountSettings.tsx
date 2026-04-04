@@ -199,7 +199,6 @@ export function AccountSettings() {
                 alt={userData?.firstName || 'User'}
                 fill
                 className="object-cover rounded-[14px]"
-                unoptimized={!!selectedCharacter || !userData?.profilePhoto}
               />
             </div>
             <h3 className="text-xl font-bold text-white">
@@ -292,7 +291,6 @@ export function AccountSettings() {
                     alt={char.name}
                     fill
                     className="object-cover"
-                    unoptimized
                   />
                   {selectedCharacterId === char.id && (
                     <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: `${char.color}33` }}>

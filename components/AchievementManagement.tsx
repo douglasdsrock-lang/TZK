@@ -61,6 +61,7 @@ import {
   Palette
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -417,7 +418,7 @@ export function AchievementManagement() {
       return function CustomIcon() {
         return (
           <div className="w-full h-full relative">
-            <img src={iconName} alt="Custom Icon" className="w-full h-full object-contain" />
+            <Image src={iconName} alt="Custom Icon" fill className="object-contain" />
           </div>
         );
       };
@@ -671,8 +672,8 @@ export function AchievementManagement() {
                   
                   {selectedIcon.startsWith('data:image') && (
                     <div className="flex items-center gap-4 p-3 bg-white/5 rounded-xl border border-[#F74C00]/30">
-                      <div className="w-12 h-12 rounded-lg bg-[#F74C00]/10 p-2">
-                        <img src={selectedIcon} alt="Preview" className="w-full h-full object-contain" />
+                      <div className="w-12 h-12 rounded-lg bg-[#F74C00]/10 p-2 relative">
+                        <Image src={selectedIcon} alt="Preview" fill className="object-contain" />
                       </div>
                       <div>
                         <p className="text-xs font-bold text-white uppercase">Ícone Customizado</p>
