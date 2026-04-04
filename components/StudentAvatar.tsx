@@ -53,6 +53,7 @@ export function StudentAvatar({ firstName, lastName, gender, characterId, classN
           src={character.profileImage}
           alt={character.name}
           fill
+          unoptimized={true}
           className="object-cover"
         />
       </div>

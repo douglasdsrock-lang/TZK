@@ -346,6 +346,7 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
                     alt={character.name}
                     width={240}
                     height={240}
+                    unoptimized={true}
                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] max-w-none h-auto z-[991] pointer-events-none"
                     style={{ filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.8))' }}
                   />

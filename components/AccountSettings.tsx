@@ -198,6 +198,7 @@ export function AccountSettings() {
                 src={selectedCharacter?.profileImage || userData?.profilePhoto || getAvatarUrl(`${userData?.firstName} ${userData?.lastName}`)} 
                 alt={userData?.firstName || 'User'}
                 fill
+                unoptimized={true}
                 className="object-cover rounded-[14px]"
               />
             </div>

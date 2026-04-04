@@ -45,6 +45,7 @@ export function CharacterSpeech({ characterId, message }: CharacterSpeechProps) 
           src={character.fullImage}
           alt={character.name}
           fill
+          unoptimized={true}
           className="object-contain object-bottom"
         />
       </motion.div>
