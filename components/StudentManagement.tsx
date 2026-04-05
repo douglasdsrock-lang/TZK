@@ -49,6 +49,7 @@ export function StudentManagement() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState('');
   const [isAssigningAchievements, setIsAssigningAchievements] = useState<any>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingAchievementId, setTogglingAchievementId] = useState<string | null>(null);
@@ -158,6 +159,16 @@ export function StudentManagement() {
           .update(payload)
           .eq('id', editingStudent.id);
         if (error) throw error;
+
+        // Update password if provided
+        if (newPassword) {
+          const response = await fetch('/api/admin/update-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: editingStudent.id, newPassword })
+          });
+          if (!response.ok) throw new Error('Erro ao atualizar senha');
+        }
       } else {
         // Use our new API route to create student without hijacking session
         const response = await fetch('/api/admin/create-student', {
@@ -319,6 +330,7 @@ export function StudentManagement() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingStudent(null);
+    setNewPassword('');
     reset();
   };
 
@@ -581,24 +593,18 @@ export function StudentManagement() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Senha Padrão</label>
-                  <div className="flex gap-2">
+                {editingStudent && (
+                  <div className="space-y-2 p-4 bg-white/5 rounded-xl border border-white/10">
+                    <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Alterar Senha (Opcional)</label>
                     <input 
-                      {...register('password')}
-                      className="flex-1 bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
-                      placeholder="Senha para o primeiro acesso"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
+                      placeholder="Deixe em branco para manter a atual"
                     />
-                    <button 
-                      type="button"
-                      onClick={generatePassword}
-                      className="px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-all"
-                    >
-                      GERAR
-                    </button>
                   </div>
-                  {errors.password && <p className="text-red-500 text-[10px]">{errors.password.message}</p>}
-                </div>
+                )}
 
                 <div className="space-y-2">
                   <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Notas Administrativas</label>

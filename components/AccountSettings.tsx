@@ -245,7 +245,8 @@ export function AccountSettings() {
                   <button
                     type="button"
                     onClick={() => setGender('male')}
-                    className="flex-1 py-3 rounded-xl border font-bold transition-all"
+                    disabled={!!userData?.gender}
+                    className="flex-1 py-3 rounded-xl border font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ 
                       backgroundColor: gender === 'male' ? `${themeColor}1A` : '#0A0A0B',
                       borderColor: gender === 'male' ? themeColor : 'rgba(255,255,255,0.05)',
@@ -257,7 +258,8 @@ export function AccountSettings() {
                   <button
                     type="button"
                     onClick={() => setGender('female')}
-                    className="flex-1 py-3 rounded-xl border font-bold transition-all"
+                    disabled={!!userData?.gender}
+                    className="flex-1 py-3 rounded-xl border font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ 
                       backgroundColor: gender === 'female' ? `${themeColor}1A` : '#0A0A0B',
                       borderColor: gender === 'female' ? themeColor : 'rgba(255,255,255,0.05)',
@@ -374,16 +376,18 @@ export function AccountSettings() {
               </div>
 
               <div className="pt-4 flex justify-end gap-4">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    soundManager.playClick();
-                    window.dispatchEvent(new CustomEvent('show-welcome-preview'));
-                  }}
-                  className="px-6 py-3 rounded-xl font-bold border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-                >
-                  TESTAR TELA DE BOAS-VINDAS
-                </button>
+                {email === 'agencia.unrocket@gmail.com' && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      soundManager.playClick();
+                      window.dispatchEvent(new CustomEvent('show-welcome-preview'));
+                    }}
+                    className="px-6 py-3 rounded-xl font-bold border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                  >
+                    TELA DE INÍCIO
+                  </button>
+                )}
                 <button 
                   type="submit"
                   disabled={saving}
@@ -395,7 +399,7 @@ export function AccountSettings() {
                   }}
                 >
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={20} />}
-                  SALVAR ALTERAÇÕES
+                  SALVAR
                 </button>
               </div>
             </form>

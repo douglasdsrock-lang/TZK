@@ -58,6 +58,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
 import { useAuth } from './AuthGuard';
 import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 import { soundManager } from '@/lib/sounds';
 
 import { CharacterSpeech } from './CharacterSpeech';
@@ -82,11 +83,16 @@ export function AchievementsGrid({ themeColor }: { themeColor: string }) {
   const [characterId, setCharacterId] = useState<string | null>(null);
 
   const getIconComponent = (iconName: string) => {
-    if (iconName?.startsWith('data:image')) {
-      return function CustomIcon() {
+    // Check if it's a data URI or a URL that looks like an image (e.g., ends in .svg or starts with http)
+    if (iconName?.startsWith('data:image') || iconName?.endsWith('.svg') || iconName?.startsWith('http')) {
+      return function CustomIcon({ size, className }: { size?: number, className?: string }) {
         return (
-          <div className="w-full h-full relative">
-            <Image src={iconName} alt="Custom Icon" fill className="object-contain" />
+          <div className={cn("w-full h-full relative", className)}>
+            <img 
+              src={iconName} 
+              alt="Custom Icon" 
+              className="w-full h-full object-contain" 
+            />
           </div>
         );
       };

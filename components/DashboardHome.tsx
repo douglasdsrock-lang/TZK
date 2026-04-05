@@ -40,10 +40,13 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<any>(null);
 
+  const [error, setError] = useState<string | null>(null);
+
   const fetchData = useCallback(async () => {
     if (!user || !user.email) return;
 
     try {
+      setError(null);
       console.log('Buscando dados para:', user.email, 'Admin:', isAdmin);
       
       // 1. Fetch student data
@@ -190,6 +193,7 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
       }
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error.message || error);
+      setError('Não foi possível carregar os dados do dashboard. Verifique sua conexão.');
     }
   }, [user, isAdmin]);
 
@@ -320,6 +324,12 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
       className="space-y-8 animate-in fade-in duration-700"
       style={{ '--theme-color': themeColor } as any}
     >
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center">
+          {error}
+        </div>
+      )}
+
       {/* Welcome Hero */}
       <section 
         className="relative z-[60] overflow-visible rounded-3xl bg-white/5 backdrop-blur-xl border p-6 md:p-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] mt-8 md:mt-12"
