@@ -16,20 +16,66 @@ import {
   ChevronRight,
   Megaphone,
   X,
-  Calendar
+  Calendar,
+  Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from './AuthGuard';
-import { getAvatarUrl, formatDate } from '@/lib/utils';
+import { getAvatarUrl, formatDate, cn } from '@/lib/utils';
 import { StudentAvatar } from './StudentAvatar';
 import { getCharacterById } from '@/lib/characters';
-
+import { notify } from './NotificationSystem';
 import { supabase } from '@/lib/supabase';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 
-export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: string }) {
+export function DashboardHome({ 
+  themeColor: propThemeColor, 
+  setActiveTab 
+}: { 
+  themeColor?: string;
+  setActiveTab?: (tab: string) => void;
+}) {
   const { user, isAdmin } = useAuth();
   const [studentData, setStudentData] = useState<any>(null);
+  const isInitialLoad = useRef(true);
+
+  // Fetch old unread notifications on login
+  useEffect(() => {
+    if (!studentData?.id) return;
+
+    const fetchOldNotifications = async () => {
+      // We wait 30 seconds as requested
+      setTimeout(async () => {
+        const { data: oldNotifs } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', studentData.id)
+          .eq('is_read', false)
+          .order('created_at', { ascending: true });
+
+        if (oldNotifs && oldNotifs.length > 0) {
+          oldNotifs.forEach((n, i) => {
+            setTimeout(() => {
+              notify({
+                type: n.type === 'level' ? 'level-up' : 'achievement',
+                title: n.title,
+                message: n.message
+              });
+            }, i * 1000); // Stagger them slightly
+          });
+
+          // Mark as read
+          await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .in('id', oldNotifs.map(n => n.id));
+        }
+      }, 30000);
+    };
+
+    fetchOldNotifications();
+  }, [studentData?.id]);
+
   const [currentMission, setCurrentMission] = useState<any>(null);
   const [lockedMission, setLockedMission] = useState<any>(null);
   const [eventMission, setEventMission] = useState<any>(null);
@@ -39,7 +85,6 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
   const [nextLevelAchievement, setNextLevelAchievement] = useState<any>(null);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<any>(null);
-
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -186,7 +231,7 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
             .from('announcements')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(3);
+            .limit(4);
           
           setAnnouncements(annData || []);
         }
@@ -271,25 +316,46 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
           .eq('id', studentData.id);
 
         // Create notifications for auto-unlocked achievements
-        const notifications = toUnlock.map(a => ({
-          user_id: studentData.id,
-          title: 'Conquista Desbloqueada! 🏆',
-          message: `Você liberou a conquista: ${a.name}`,
-          type: 'achievement'
-        }));
+        const notifications = toUnlock.map(a => {
+          // Only notify immediately if NOT the initial load (real-time)
+          // Initial load notifications are handled by the 30s delay useEffect
+          if (!isInitialLoad.current) {
+            notify({
+              type: 'achievement',
+              title: 'Conquista Desbloqueada! 🏆',
+              message: `Você liberou a conquista: ${a.name}`
+            });
+          }
+          return {
+            user_id: studentData.id,
+            title: 'Conquista Desbloqueada! 🏆',
+            message: `Você liberou a conquista: ${a.name}`,
+            type: 'achievement',
+            is_read: !isInitialLoad.current // Mark as read if shown immediately
+          };
+        });
 
         // Notification for level up if level increased
         if (newLevel > (studentData.level || 0)) {
+          if (!isInitialLoad.current) {
+            notify({
+              type: 'level-up',
+              title: 'Subiu de Nível! ⚡',
+              message: `Parabéns! Você alcançou o nível ${newLevel}`
+            });
+          }
           notifications.push({
             user_id: studentData.id,
             title: 'Subiu de Nível! ⚡',
             message: `Parabéns! Você alcançou o nível ${newLevel}`,
-            type: 'level'
+            type: 'level',
+            is_read: !isInitialLoad.current
           });
         }
 
         await supabase.from('notifications').insert(notifications);
       }
+      isInitialLoad.current = false;
     };
 
     checkAutoUnlock();
@@ -298,24 +364,29 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
   const character = getCharacterById(studentData?.characterId);
   const themeColor = propThemeColor || character?.color || '#F74C00';
 
+  const [showLevelPopup, setShowLevelPopup] = useState(false);
+
   const stats = [
     { 
       label: 'Total de Conquistas', 
       value: studentData?.achievements?.length || 0, 
       icon: Trophy, 
-      color: themeColor
+      color: themeColor,
+      onClick: () => setActiveTab?.('achievements')
     },
     { 
       label: 'Nível Atual', 
       value: studentData?.level || 0, 
       icon: Star, 
-      color: themeColor
+      color: themeColor,
+      onClick: () => setShowLevelPopup(true)
     },
     { 
       label: 'Rank Global', 
       value: rankPosition, 
       icon: Shield, 
-      color: themeColor
+      color: themeColor,
+      onClick: () => setActiveTab?.('ranking')
     },
   ];
 
@@ -324,6 +395,73 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
       className="space-y-8 animate-in fade-in duration-700"
       style={{ '--theme-color': themeColor } as any}
     >
+      {showLevelPopup && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+            onClick={() => setShowLevelPopup(false)} 
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative bg-[#151518] border border-white/10 p-8 rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden"
+          >
+            <div 
+              className="absolute top-0 left-0 w-full h-1"
+              style={{ backgroundColor: themeColor }}
+            />
+            
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div 
+                className="w-20 h-20 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10"
+                style={{ color: themeColor }}
+              >
+                <Star size={40} fill={themeColor} />
+              </div>
+              
+              <div>
+                <h3 className="text-2xl font-display font-black uppercase tracking-tight">Nível {studentData?.level || 0}</h3>
+                <p className="text-gray-400 text-sm mt-2">
+                  Você está progredindo muito bem! Continue completando missões para desbloquear novas recompensas.
+                </p>
+              </div>
+
+              <div className="w-full space-y-3">
+                <div className="flex justify-between text-[10px] font-mono font-bold uppercase tracking-widest text-gray-500">
+                  <span>Progresso Atual</span>
+                  <span style={{ color: themeColor }}>{Math.min(100, Math.round(((studentData?.level || 0) / nextLevelTarget) * 100))}%</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(100, ((studentData?.level || 0) / nextLevelTarget) * 100)}%` }}
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: themeColor }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-600 text-center font-mono">
+                  Faltam {Math.max(0, nextLevelTarget - (studentData?.level || 0))} níveis para o próximo marco.
+                </p>
+              </div>
+
+              <button 
+                onClick={() => setShowLevelPopup(false)}
+                className="w-full py-4 rounded-xl font-black text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                style={{ 
+                  backgroundColor: themeColor,
+                  boxShadow: `0 10px 20px ${themeColor}33`
+                }}
+              >
+                FECHAR
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
       {error && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-center">
           {error}
@@ -371,7 +509,7 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
                 />
               )}
             </div>
-            <div className="absolute -bottom-2 -right-2 md:-bottom-3 md:-right-3 w-8 h-8 md:w-10 md:h-10 bg-[#FFDA1F] text-black font-black rounded-lg flex items-center justify-center border-4 border-[#151518] text-xs md:text-sm z-30">
+            <div className="absolute -bottom-2 -right-2 md:-bottom-3 md:-right-3 w-8 h-8 md:w-10 md:h-10 bg-[#FFDA1F] text-black font-black rounded-lg flex items-center justify-center border-4 border-[#151518] text-xs md:text-sm z-[1000] shadow-lg">
               {studentData?.level || 1}
             </div>
           </div>
@@ -421,7 +559,8 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="relative overflow-hidden bg-[#151518]/40 backdrop-blur-xl border p-6 rounded-2xl flex items-center gap-5 group hover:scale-[1.02] transition-all duration-300"
+            onClick={stat.onClick}
+            className="relative overflow-hidden bg-[#151518]/40 backdrop-blur-xl border p-6 rounded-2xl flex items-center gap-5 group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
             style={{ borderColor: `${stat.color}33` }}
           >
             <div 
@@ -451,14 +590,18 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
             <h3 className="text-lg font-display font-bold uppercase tracking-wider text-white">Comunicados</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {announcements.map((ann, i) => (
+            {announcements.slice(0, 4).map((ann, i) => (
               <motion.div
                 key={ann.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 onClick={() => setSelectedAnnouncement(ann)}
-                className="group relative cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-md p-5 transition-all hover:bg-white/[0.08] hover:translate-y-[-4px]"
+                className={cn(
+                  "group relative cursor-pointer rounded-2xl border border-white/5 bg-white/[0.01] backdrop-blur-xl p-5 transition-all hover:bg-white/[0.05] hover:translate-y-[-4px]",
+                  i >= 2 && "hidden md:block",
+                  i === 3 && "lg:hidden"
+                )}
                 style={{ 
                   '--hover-color': themeColor,
                 } as React.CSSProperties}
@@ -502,13 +645,13 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedAnnouncement(null)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/40 backdrop-blur-md"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#151518]/90 backdrop-blur-2xl shadow-2xl"
+              className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-white/5 bg-[#151518]/40 backdrop-blur-3xl shadow-2xl"
             >
               <div 
                 className="absolute top-0 left-0 w-full h-1"
@@ -570,7 +713,7 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
       </AnimatePresence>
 
       {/* Next Mission & Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div id="missions-section" className="grid grid-cols-1 lg:grid-cols-2 gap-8 scroll-mt-24">
         <div 
           className="relative overflow-hidden bg-[#F74C00]/5 backdrop-blur-xl border rounded-3xl p-8 space-y-6"
           style={{ 
@@ -715,6 +858,42 @@ export function DashboardHome({ themeColor: propThemeColor }: { themeColor?: str
           </div>
         </div>
       </div>
+      {/* Test Notifications (Admin Only) */}
+      {isAdmin && (
+        <div className="pt-12 border-t border-white/5 flex flex-wrap gap-4 items-center">
+          <p className="text-[10px] font-mono text-gray-600 uppercase tracking-widest w-full mb-2">Painel do Administrador (Testes de Feedback)</p>
+          <button 
+            onClick={() => notify({
+              type: 'level-up',
+              title: 'Subiu de Nível! ⚡',
+              message: 'Parabéns! Você alcançou o nível 15 e desbloqueou novas missões.'
+            })}
+            className="px-4 py-2 rounded-lg bg-[#FFDA1F]/10 border border-[#FFDA1F]/20 text-[#FFDA1F] text-xs font-bold hover:bg-[#FFDA1F]/20 transition-all"
+          >
+            Testar Level Up
+          </button>
+          <button 
+            onClick={() => notify({
+              type: 'mission-complete',
+              title: 'Missão Concluída! 🎯',
+              message: 'Você completou "O Despertar do Herói" e ganhou 500 XP.'
+            })}
+            className="px-4 py-2 rounded-lg bg-[#F74C00]/10 border border-[#F74C00]/20 text-[#F74C00] text-xs font-bold hover:bg-[#F74C00]/20 transition-all"
+          >
+            Testar Missão
+          </button>
+          <button 
+            onClick={() => notify({
+              type: 'achievement',
+              title: 'Nova Conquista! 🏆',
+              message: 'Você desbloqueou a medalha "Explorador Veterano".'
+            })}
+            className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-bold hover:bg-white/10 transition-all"
+          >
+            Testar Conquista
+          </button>
+        </div>
+      )}
     </div>
   );
 }

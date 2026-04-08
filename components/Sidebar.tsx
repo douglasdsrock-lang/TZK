@@ -27,6 +27,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (isCollapsed: boolean) => void;
   themeColor: string;
+  studentData?: any;
 }
 
 export function Sidebar({ 
@@ -36,7 +37,8 @@ export function Sidebar({
   setIsOpen,
   isCollapsed,
   setIsCollapsed,
-  themeColor
+  themeColor,
+  studentData
 }: SidebarProps) {
   const { isAdmin, logout } = useAuth();
 
@@ -138,14 +140,30 @@ export function Sidebar({
               <LayoutDashboard className="text-black" size={24} />
             </div>
             {!isCollapsed && (
-              <span 
-                className="text-2xl font-display font-black tracking-tighter whitespace-nowrap"
-                style={{ color: themeColor }}
-              >
-                TZK.
-              </span>
+              <div className="flex flex-col">
+                <span 
+                  className="text-2xl font-display font-black tracking-tighter whitespace-nowrap leading-none"
+                  style={{ color: themeColor }}
+                >
+                  TZK.
+                </span>
+                {studentData && (
+                  <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mt-1">
+                    Nível {studentData.level || 1}
+                  </span>
+                )}
+              </div>
             )}
           </div>
+          
+          {isCollapsed && studentData && (
+            <div 
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border border-white/10"
+              style={{ color: themeColor, backgroundColor: `${themeColor}1A` }}
+            >
+              L{studentData.level || 1}
+            </div>
+          )}
           
           <button 
             onClick={() => {

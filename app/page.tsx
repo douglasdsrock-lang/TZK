@@ -14,6 +14,7 @@ import { MissionManagement } from '@/components/MissionManagement';
 import { CommunicationManagement } from '@/components/CommunicationManagement';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
+import { NotificationSystem } from '@/components/NotificationSystem';
 import { supabase } from '@/lib/supabase';
 import { getCharacterById } from '@/lib/characters';
 import { soundManager } from '@/lib/sounds';
@@ -116,7 +117,7 @@ function DashboardContent() {
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        return <DashboardHome themeColor={themeColor} />;
+        return <DashboardHome themeColor={themeColor} setActiveTab={handleTabChange} />;
       case 'ranking':
         return <Ranking themeColor={themeColor} />;
       case 'achievements':
@@ -124,15 +125,15 @@ function DashboardContent() {
       case 'account':
         return <AccountSettings />;
       case 'management':
-        return isAdmin ? <StudentManagement /> : <DashboardHome themeColor={themeColor} />;
+        return isAdmin ? <StudentManagement /> : <DashboardHome themeColor={themeColor} setActiveTab={handleTabChange} />;
       case 'achievement-management':
-        return isAdmin ? <AchievementManagement /> : <DashboardHome themeColor={themeColor} />;
+        return isAdmin ? <AchievementManagement /> : <DashboardHome themeColor={themeColor} setActiveTab={handleTabChange} />;
       case 'mission-management':
-        return isAdmin ? <MissionManagement /> : <DashboardHome themeColor={themeColor} />;
+        return isAdmin ? <MissionManagement /> : <DashboardHome themeColor={themeColor} setActiveTab={handleTabChange} />;
       case 'communication':
-        return isAdmin ? <CommunicationManagement /> : <DashboardHome themeColor={themeColor} />;
+        return isAdmin ? <CommunicationManagement /> : <DashboardHome themeColor={themeColor} setActiveTab={handleTabChange} />;
       default:
-        return <DashboardHome themeColor={themeColor} />;
+        return <DashboardHome themeColor={themeColor} setActiveTab={handleTabChange} />;
     }
   };
 
@@ -146,6 +147,7 @@ function DashboardContent() {
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
         themeColor={themeColor}
+        studentData={studentData}
       />
       
       <div className="flex-1 flex flex-col min-w-0">
@@ -161,6 +163,7 @@ function DashboardContent() {
           </ErrorBoundary>
         </main>
       </div>
+      <NotificationSystem />
     </div>
   );
 }

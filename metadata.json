@@ -1,5 +1,5 @@
 {
-  "name": "AssetGen: Game Style Image Generator",
-  "description": "Generate high-quality game assets and PNG images for your SaaS using AI.",
+  "name": "EduQuest: Gamified Student Dashboard",
+  "description": "A gamified educational dashboard for students to track progress, complete missions, and earn achievements.",
   "requestFramePermissions": []
 }
