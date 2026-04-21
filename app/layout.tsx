@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   title: "TZK Dashboard",
   description: "Plataforma de gamificação para alunos.",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Geração TZK",
+  },
 };
 
 export default function RootLayout({
