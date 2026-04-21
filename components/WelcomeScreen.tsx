@@ -45,7 +45,7 @@ export function WelcomeScreen({ user, studentData, onComplete }: WelcomeScreenPr
   const themeColor = selectedChar?.color || '#F74C00';
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#0A0A0B] flex items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 z-[10000] bg-[#0A0A0B] flex items-center justify-center overflow-hidden">
       <div className="max-w-6xl w-full h-full flex flex-col p-4 md:p-8">
         <div className="flex-1 flex flex-col justify-center gap-6 md:gap-8 py-2">
           <div className="text-center space-y-2">

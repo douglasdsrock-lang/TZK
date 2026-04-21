@@ -157,7 +157,7 @@ function DashboardContent() {
           themeColor={themeColor}
         />
         
-        <main className="flex-1 p-4 md:p-8 pt-12 md:pt-16 overflow-visible relative">
+        <main className="flex-1 p-4 md:p-8 pt-12 md:pt-16 overflow-visible">
           <ErrorBoundary>
             {renderContent()}
           </ErrorBoundary>

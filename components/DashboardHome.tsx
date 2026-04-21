@@ -17,7 +17,8 @@ import {
   Megaphone,
   X,
   Calendar,
-  Activity
+  Activity,
+  Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from './AuthGuard';
@@ -388,6 +389,12 @@ export function DashboardHome({
       color: themeColor,
       onClick: () => setActiveTab?.('ranking')
     },
+    { 
+      label: 'Clã', 
+      value: studentData?.class || 'Sem Clã', 
+      icon: Sword, 
+      color: themeColor
+    },
   ];
 
   return (
@@ -396,7 +403,7 @@ export function DashboardHome({
       style={{ '--theme-color': themeColor } as any}
     >
       {showLevelPopup && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -470,7 +477,7 @@ export function DashboardHome({
 
       {/* Welcome Hero */}
       <section 
-        className="relative z-[60] overflow-visible rounded-3xl bg-white/5 backdrop-blur-xl border p-6 md:p-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] mt-8 md:mt-12"
+        className="relative z-[990] overflow-visible rounded-3xl bg-white/5 backdrop-blur-xl border p-6 md:p-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] mt-8 md:mt-12"
         style={{ 
           borderColor: `${themeColor}33`,
           boxShadow: `0 0 40px ${themeColor}26`
@@ -552,7 +559,7 @@ export function DashboardHome({
       </section>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
           <motion.div 
             key={stat.label}
@@ -627,7 +634,7 @@ export function DashboardHome({
                 
                 {/* Dynamic Border on Hover */}
                 <div 
-                  className="absolute inset-0 border border-transparent group-hover:border-[var(--hover-color)]/30 rounded-2xl transition-colors pointer-events-none"
+                  className="absolute inset-0 border border-transparent group-hover:border-[var(--hover-color)]/30 rounded-2xl transition-all duration-300 pointer-events-none -inset-[1px]"
                   style={{ '--hover-color': themeColor } as React.CSSProperties}
                 />
               </motion.div>
@@ -639,7 +646,7 @@ export function DashboardHome({
       {/* Announcement Modal */}
       <AnimatePresence>
         {selectedAnnouncement && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 md:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -738,7 +745,7 @@ export function DashboardHome({
                   style={{ borderColor: `${themeColor}26` }}
                 >
                   <div 
-                    className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 blur-2xl group-hover:opacity-100 opacity-50 transition-all"
+                    className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 blur-2xl group-hover:opacity-100 opacity-50 transition-all pointer-events-none"
                     style={{ backgroundColor: themeColor }}
                   ></div>
                   <div 

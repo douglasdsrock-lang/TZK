@@ -16,7 +16,7 @@ export function CharacterSpeech({ characterId, message }: CharacterSpeechProps) 
   if (!character || !message) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 pointer-events-none flex items-end gap-2 max-w-[300px] md:max-w-[400px]">
+    <div className="fixed bottom-4 right-4 z-[950] pointer-events-none flex items-end gap-2 max-w-[300px] md:max-w-[400px]">
       <AnimatePresence mode="wait">
         <motion.div
           key={message}

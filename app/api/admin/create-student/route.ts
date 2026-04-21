@@ -91,7 +91,9 @@ export async function POST(req: Request) {
       experience: 0,
       status: studentData.status || 'active',
       class: studentData.class || null,
-      birth_date: studentData.birthDate || null,
+      birth_date: studentData.birth_date || null,
+      entry_date: studentData.entry_date || null,
+      unique_id: studentData.unique_id || null,
       gender: studentData.gender || 'male',
       notes: studentData.notes || null,
       created_at: new Date().toISOString()

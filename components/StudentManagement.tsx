@@ -31,12 +31,14 @@ const studentSchema = z.object({
   firstName: z.string().min(2, 'Nome muito curto'),
   lastName: z.string().min(2, 'Sobrenome muito curto'),
   email: z.string().email('Email inválido'),
-  class: z.string().min(1, 'Turma é obrigatória'),
+  class: z.string().min(1, 'Clã é obrigatória'),
   birthDate: z.string().min(1, 'Data de nascimento é obrigatória'),
+  entryDate: z.string().min(1, 'Data de entrada é obrigatória'),
+  uniqueId: z.string().min(1, 'ID único é obrigatório'),
   gender: z.enum(['male', 'female'], { message: 'Sexo é obrigatório' }),
   notes: z.string().optional(),
   status: z.enum(['active', 'inactive']),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').optional().or(z.literal('')),
+  password: z.string().optional().or(z.literal('')),
 });
 
 type StudentFormValues = z.infer<typeof studentSchema>;
@@ -53,6 +55,7 @@ export function StudentManagement() {
   const [isAssigningAchievements, setIsAssigningAchievements] = useState<any>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingAchievementId, setTogglingAchievementId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<StudentFormValues>({
     resolver: zodResolver(studentSchema),
@@ -77,6 +80,8 @@ export function StudentManagement() {
         email: s.email,
         class: s.class,
         birthDate: s.birth_date,
+        entryDate: s.entry_date,
+        uniqueId: s.unique_id,
         gender: s.gender,
         characterId: s.character_id,
         status: s.status,
@@ -136,10 +141,23 @@ export function StudentManagement() {
   const adminStudent = students.find(s => s.email === user?.email);
 
   const onSubmit = async (data: StudentFormValues) => {
+    setFormError(null);
     if (!editingStudent && data.password && data.password.length < 6) {
-      alert('A senha deve ter pelo menos 6 caracteres.');
+      setFormError('A senha deve ter pelo menos 6 caracteres.');
       return;
     }
+
+    // Check for duplicate uniqueId
+    const { data: existing } = await supabase
+      .from('students')
+      .select('id')
+      .eq('unique_id', data.uniqueId);
+    
+    if (existing && existing.length > 0 && (!editingStudent || existing[0].id !== editingStudent.id)) {
+      setFormError('O ID único já está sendo utilizado por outro aluno. Por favor, escolha um novo ID.');
+      return;
+    }
+
     try {
       const payload = {
         first_name: data.firstName,
@@ -147,6 +165,8 @@ export function StudentManagement() {
         email: data.email,
         class: data.class,
         birth_date: data.birthDate,
+        entry_date: data.entryDate,
+        unique_id: data.uniqueId,
         gender: data.gender,
         status: data.status,
         notes: data.notes,
@@ -189,7 +209,12 @@ export function StudentManagement() {
     } catch (err: any) {
       const errorMessage = err.message || JSON.stringify(err);
       console.error('Error saving student details:', errorMessage);
-      alert(`Erro ao salvar aluno: ${errorMessage}`);
+      
+      if (errorMessage.includes('unique constraint') || errorMessage.includes('students_unique_id_idx')) {
+        setFormError('O ID único já está sendo utilizado por outro aluno. Por favor, escolha um novo ID.');
+      } else {
+        setFormError(`Erro ao salvar aluno: ${errorMessage}`);
+      }
     }
   };
 
@@ -288,6 +313,21 @@ export function StudentManagement() {
     }
   };
 
+  const fetchNextTzkId = async () => {
+    const { data } = await supabase
+      .from('students')
+      .select('unique_id')
+      .like('unique_id', 'tzk%')
+      .order('unique_id', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0 && data[0].unique_id) {
+      const currentId = parseInt(data[0].unique_id.replace('tzk', ''));
+      return `tzk${String(currentId + 1).padStart(3, '0')}`;
+    }
+    return 'tzk101';
+  };
+
   const generatePassword = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
     let pass = '';
@@ -297,7 +337,8 @@ export function StudentManagement() {
     setValue('password', pass);
   };
 
-  const openModal = (student: any = null, isEdit: boolean = false) => {
+  const openModal = async (student: any = null, isEdit: boolean = false) => {
+    setFormError(null);
     setEditingStudent(isEdit ? student : null);
     if (student) {
       reset({
@@ -306,22 +347,25 @@ export function StudentManagement() {
         email: student.email,
         class: student.class,
         birthDate: student.birthDate,
+        entryDate: student.entryDate,
+        uniqueId: student.uniqueId,
         gender: student.gender || 'male',
         notes: student.notes || '',
         status: student.status,
-        password: ''
       });
     } else {
+      const nextId = await fetchNextTzkId();
       reset({
         firstName: '',
         lastName: '',
         email: '',
         class: '',
         birthDate: '',
+        entryDate: new Date().toISOString().split('T')[0],
+        uniqueId: nextId,
         gender: 'male',
         notes: '',
         status: 'active',
-        password: ''
       });
     }
     setIsModalOpen(true);
@@ -403,8 +447,9 @@ export function StudentManagement() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.02]">
+                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">ID</th>
                 <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Aluno</th>
-                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Turma</th>
+                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Clã</th>
                 <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Nível</th>
                 <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Conquistas</th>
                 <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Status</th>
@@ -414,19 +459,22 @@ export function StudentManagement() {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <Loader2 className="w-8 h-8 text-[#F74C00] animate-spin mx-auto" />
                   </td>
                 </tr>
               ) : filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                     Nenhum aluno encontrado.
                   </td>
                 </tr>
               ) : (
                 filteredStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">
+                    <td className="px-4 py-4">
+                      <span className="font-mono text-xs text-gray-400">{student.uniqueId}</span>
+                    </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2 md:gap-3">
                         <div className="hidden sm:block">
@@ -506,7 +554,7 @@ export function StudentManagement() {
       {/* Student Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-10 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="fixed inset-0 z-[10000] flex items-start justify-center p-4 md:p-10 bg-black/60 backdrop-blur-sm overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -553,7 +601,7 @@ export function StudentManagement() {
                     {errors.email && <p className="text-red-500 text-[10px]">{errors.email.message}</p>}
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Turma / Grupo</label>
+                    <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Clã</label>
                     <input 
                       {...register('class')}
                       className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
@@ -569,6 +617,23 @@ export function StudentManagement() {
                       className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
                     />
                     {errors.birthDate && <p className="text-red-500 text-[10px]">{errors.birthDate.message}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Data de Entrada</label>
+                    <input 
+                      type="date"
+                      {...register('entryDate')}
+                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
+                    />
+                    {errors.entryDate && <p className="text-red-500 text-[10px]">{errors.entryDate.message}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">ID ÚNICO</label>
+                    <input 
+                      {...register('uniqueId')}
+                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all font-mono"
+                    />
+                    {errors.uniqueId && <p className="text-red-500 text-[10px]">{errors.uniqueId.message}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Status</label>
@@ -591,15 +656,36 @@ export function StudentManagement() {
                     </select>
                     {errors.gender && <p className="text-red-500 text-[10px]">{errors.gender.message}</p>}
                   </div>
+                  {!editingStudent && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Senha</label>
+                        <button type="button" onClick={generatePassword} className="text-[10px] text-[#F74C00] hover:text-[#ff5a14] font-bold">GERAR SENHA</button>
+                      </div>
+                      <input 
+                        type="text"
+                        {...register('password')}
+                        className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
+                        placeholder="Insira ou gere uma senha"
+                      />
+                      {errors.password && <p className="text-red-500 text-[10px]">{errors.password.message}</p>}
+                    </div>
+                  )}
                 </div>
 
                 {editingStudent && (
                   <div className="space-y-2 p-4 bg-white/5 rounded-xl border border-white/10">
-                    <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Alterar Senha (Opcional)</label>
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Alterar Senha (Opcional)</label>
+                      <button type="button" onClick={generatePassword} className="text-[10px] text-[#F74C00] hover:text-[#ff5a14] font-bold">GERAR SENHA</button>
+                    </div>
                     <input 
                       type="password"
                       value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        setValue('password', e.target.value);
+                      }}
                       className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
                       placeholder="Deixe em branco para manter a atual"
                     />
@@ -615,6 +701,12 @@ export function StudentManagement() {
                     placeholder="Adicione notas internas sobre o aluno..."
                   />
                 </div>
+
+                {formError && (
+                  <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-500 text-sm">
+                    {formError}
+                  </div>
+                )}
 
                 <div className="pt-4 flex items-center justify-end gap-4">
                   <button 
@@ -642,7 +734,7 @@ export function StudentManagement() {
       {/* Achievement Assignment Modal */}
       <AnimatePresence>
         {isAssigningAchievements && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-10 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="fixed inset-0 z-[10000] flex items-start justify-center p-4 md:p-10 bg-black/60 backdrop-blur-sm overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -753,7 +845,7 @@ export function StudentManagement() {
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {deletingId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

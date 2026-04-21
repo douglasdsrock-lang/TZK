@@ -12,7 +12,8 @@ import {
   Target,
   Medal,
   Megaphone,
-  X
+  X,
+  MessageCircle
 } from 'lucide-react';
 import { useAuth } from './AuthGuard';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,7 @@ export function Sidebar({
     { id: 'ranking', label: 'Ranking Global', icon: Medal },
     { id: 'achievements', label: 'Minhas Conquistas', icon: Trophy },
     { id: 'account', label: 'Minha Conta', icon: User },
+    { id: 'community', label: 'Entrar na comunidade', icon: MessageCircle },
   ];
 
   const adminItems = [
@@ -115,13 +117,13 @@ export function Sidebar({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] lg:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           />
         )}
       </AnimatePresence>
 
       <aside className={cn(
-        "fixed lg:sticky top-0 left-0 z-[999] h-screen bg-[#0F0F12] border-r border-white/5 flex flex-col transition-all duration-300 lg:translate-x-0",
+        "fixed lg:sticky top-0 left-0 z-50 h-screen bg-[#0F0F12] border-r border-white/5 flex flex-col transition-all duration-300 lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full",
         isCollapsed ? "w-20" : "w-72"
       )}>

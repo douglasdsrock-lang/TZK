@@ -18,25 +18,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const checkUser = async (sessionUser: User | null) => {
+      setUser(sessionUser);
+      
+      if (sessionUser) {
+        // Check if user is admin via hardcoded fallback or DB role
+        const isHardcodedAdmin = sessionUser.email === 'agencia.unrocket@gmail.com' || sessionUser.id === 'OMCUqpvEF9Zjg28ivP95zosy0zJ3';
+        
+        const { data: studentData } = await supabase
+          .from('students')
+          .select('role')
+          .eq('id', sessionUser.id)
+          .maybeSingle();
+        
+        setIsAdmin(isHardcodedAdmin || studentData?.role === 'admin');
+      } else {
+        setIsAdmin(false);
+      }
+      setLoading(false);
+    };
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+      checkUser(session?.user ?? null);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+      checkUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const isAdmin = user?.email === 'agencia.unrocket@gmail.com' || user?.id === 'OMCUqpvEF9Zjg28ivP95zosy0zJ3';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
