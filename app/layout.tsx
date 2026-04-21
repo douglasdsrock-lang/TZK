@@ -8,6 +8,7 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mon
 export const metadata: Metadata = {
   title: "TZK Dashboard",
   description: "Plataforma de gamificação para alunos.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

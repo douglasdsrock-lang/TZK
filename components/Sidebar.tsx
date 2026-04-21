@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Home, 
   Trophy, 
@@ -13,7 +13,8 @@ import {
   Medal,
   Megaphone,
   X,
-  MessageCircle
+  MessageCircle,
+  Download
 } from 'lucide-react';
 import { useAuth } from './AuthGuard';
 import { cn } from '@/lib/utils';
@@ -49,6 +50,7 @@ export function Sidebar({
     { id: 'achievements', label: 'Minhas Conquistas', icon: Trophy },
     { id: 'account', label: 'Minha Conta', icon: User },
     { id: 'community', label: 'Entrar na comunidade', icon: MessageCircle },
+    { id: 'download', label: 'Baixar App', icon: Download },
   ];
 
   const adminItems = [
@@ -58,14 +60,43 @@ export function Sidebar({
     { id: 'communication', label: 'Comunicação', icon: Megaphone },
   ];
 
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
   const renderMenuItem = (item: any) => {
     const Icon = item.icon;
     const isActive = activeTab === item.id;
     
+    const handleClick = () => {
+      if (item.id === 'download') {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult: any) => {
+            if (choiceResult.outcome === 'accepted') {
+              console.log('User accepted the A2HS prompt');
+            }
+            setDeferredPrompt(null);
+          });
+        } else {
+          alert('O aplicativo já está instalado ou não é suportado pelo navegador.');
+        }
+      } else {
+        setActiveTab(item.id);
+      }
+    };
+    
     return (
       <button
         key={item.id}
-        onClick={() => setActiveTab(item.id)}
+        onClick={handleClick}
         title={isCollapsed ? item.label : undefined}
         className={cn(
           "w-full flex items-center px-4 py-3.5 rounded-xl transition-all group relative overflow-hidden",
