@@ -477,7 +477,7 @@ export function DashboardHome({
 
       {/* Welcome Hero */}
       <section 
-        className="relative z-[990] overflow-visible rounded-3xl bg-white/5 backdrop-blur-xl border p-6 md:p-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] mt-8 md:mt-12"
+        className="relative z-10 overflow-visible rounded-3xl bg-white/5 backdrop-blur-xl border p-6 md:p-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] mt-8 md:mt-12"
         style={{ 
           borderColor: `${themeColor}33`,
           boxShadow: `0 0 40px ${themeColor}26`

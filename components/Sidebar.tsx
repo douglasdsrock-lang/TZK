@@ -86,7 +86,16 @@ export function Sidebar({
             setDeferredPrompt(null);
           });
         } else {
-          alert('O aplicativo já está instalado ou não é suportado pelo navegador.');
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          const isAndroid = /Android/.test(navigator.userAgent);
+          
+          if (isIOS) {
+            alert('Para instalar: toque no botão "Compartilhar" do Safari e selecione "Adicionar à Tela de Início".');
+          } else if (isAndroid) {
+            alert('Para instalar: toque nos três pontinhos do navegador e selecione "Instalar aplicativo" ou "Adicionar à tela de início".');
+          } else {
+            alert('Para instalar: verifique a barra de endereços do navegador. Se houver um ícone de instalação, clique nele. Caso contrário, tente adicionar o site aos favoritos na sua tela inicial.');
+          }
         }
       } else {
         setActiveTab(item.id);

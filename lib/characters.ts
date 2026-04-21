@@ -35,8 +35,8 @@ export const characters: Character[] = [
     id: `male_${i + 1}`,
     name: `Personagem ${i + 1}`,
     gender: 'male' as const,
-    profileImage: `https://demo.arteli.top/wp-content/uploads/2026/04/male_${i + 1}_profile.jpeg`,
-    fullImage: `https://demo.arteli.top/wp-content/uploads/2026/04/male_${i + 1}_full.png`,
+    profileImage: `https://demo.arteli.top/wp-content/uploads/2026/04/male_${i + 1}_profile.jpeg?v=2`,
+    fullImage: `https://demo.arteli.top/wp-content/uploads/2026/04/male_${i + 1}_full.png?v=2`,
     color: maleColors[i],
   })),
   // Femininos
@@ -44,8 +44,8 @@ export const characters: Character[] = [
     id: `female_${i + 1}`,
     name: `Personagem ${i + 9}`,
     gender: 'female' as const,
-    profileImage: `https://demo.arteli.top/wp-content/uploads/2026/04/female_${i + 1}_profile.jpeg`,
-    fullImage: `https://demo.arteli.top/wp-content/uploads/2026/04/female_${i + 1}_full.png`,
+    profileImage: `https://demo.arteli.top/wp-content/uploads/2026/04/female_${i + 1}_profile.jpeg?v=2`,
+    fullImage: `https://demo.arteli.top/wp-content/uploads/2026/04/female_${i + 1}_full.png?v=2`,
     color: femaleColors[i],
   })),
 ];
