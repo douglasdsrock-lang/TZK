@@ -22,16 +22,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { cn, getAvatarUrl } from '@/lib/utils';
 import { StudentAvatar } from './StudentAvatar';
+import { ClanManagement } from './ClanManagement';
 
 import { useAuth } from './AuthGuard';
 
 import { supabase } from '@/lib/supabase';
 
+
 const studentSchema = z.object({
   firstName: z.string().min(2, 'Nome muito curto'),
   lastName: z.string().min(2, 'Sobrenome muito curto'),
   email: z.string().email('Email inválido'),
-  class: z.string().min(1, 'Clã é obrigatória'),
+  clan_id: z.string().nullable().optional(), // Alterado de class para clan_id
   birthDate: z.string().min(1, 'Data de nascimento é obrigatória'),
   entryDate: z.string().min(1, 'Data de entrada é obrigatória'),
   uniqueId: z.string().min(1, 'ID único é obrigatório'),
@@ -43,12 +45,17 @@ const studentSchema = z.object({
 
 type StudentFormValues = z.infer<typeof studentSchema>;
 
+// ...
+
 export function StudentManagement() {
   const { user, isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState<'students' | 'clans'>('students');
   const [students, setStudents] = useState<any[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clans, setClans] = useState<any[]>([]); // Adicionado estado para clans
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [newPassword, setNewPassword] = useState('');
@@ -108,20 +115,34 @@ export function StudentManagement() {
     setCategories(data || []);
   };
 
+  const fetchClans = async () => {
+    const { data } = await supabase.from('clans').select('id, name, icon');
+    setClans(data || []);
+  };
+
   useEffect(() => {
     fetchStudents();
     fetchAchievements();
     fetchCategories();
+    fetchClans();
 
-    const channel = supabase
+    const studentsChannel = supabase
       .channel('public:students_mgmt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
         fetchStudents();
       })
       .subscribe();
 
+    const clansChannel = supabase
+      .channel('public:clans_mgmt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clans' }, () => {
+        fetchClans();
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(studentsChannel);
+      supabase.removeChannel(clansChannel);
     };
   }, []);
 
@@ -163,7 +184,7 @@ export function StudentManagement() {
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,
-        class: data.class,
+        clan_id: data.clan_id,
         birth_date: data.birthDate,
         entry_date: data.entryDate,
         unique_id: data.uniqueId,
@@ -345,7 +366,7 @@ export function StudentManagement() {
         firstName: student.firstName,
         lastName: student.lastName,
         email: student.email,
-        class: student.class,
+        clan_id: student.clan_id,
         birthDate: student.birthDate,
         entryDate: student.entryDate,
         uniqueId: student.uniqueId,
@@ -359,7 +380,7 @@ export function StudentManagement() {
         firstName: '',
         lastName: '',
         email: '',
-        class: '',
+        clan_id: '',
         birthDate: '',
         entryDate: new Date().toISOString().split('T')[0],
         uniqueId: nextId,
@@ -380,176 +401,185 @@ export function StudentManagement() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-row items-center justify-between gap-4">
-        <div className="flex-1">
-          <h2 className="text-2xl md:text-3xl font-display font-black tracking-tight">GESTÃO DE ALUNOS</h2>
-          <p className="text-gray-500 mt-1 text-xs md:text-sm hidden sm:block">Gerencie jogadores, atribua conquistas e acompanhe o progresso.</p>
-        </div>
-        <div className="flex items-center gap-2 md:gap-3">
-          {isAdmin && (
-            adminStudent ? (
-              <button 
-                onClick={() => setIsAssigningAchievements(adminStudent)}
-                className="bg-white/5 hover:bg-white/10 text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 border border-white/10 text-[10px] md:text-sm whitespace-nowrap"
-              >
-                <Trophy size={16} className="text-[#F74C00]" />
-                <span className="hidden xs:inline">MINHAS CONQUISTAS</span>
-                <span className="xs:hidden">CONQUISTAS</span>
-              </button>
-            ) : (
-              <button 
-                onClick={() => openModal({
-                  firstName: user?.user_metadata?.full_name?.split(' ')[0] || 'Admin',
-                  lastName: user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-                  email: user?.email,
-                  class: 'Administração',
-                  birthDate: new Date().toISOString().split('T')[0],
-                  gender: 'male',
-                  status: 'active'
-                })}
-                className="bg-white/5 hover:bg-white/10 text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 border border-white/10 text-[10px] md:text-sm whitespace-nowrap"
-              >
-                <User size={16} className="text-[#F74C00]" />
-                ATIVAR PERFIL
-              </button>
-            )
-          )}
-          <button 
-            onClick={() => openModal()}
-            className="bg-[#F74C00] hover:bg-[#ff5a14] text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-500/20 text-[10px] md:text-sm whitespace-nowrap"
-          >
-            <Plus size={16} />
-            ADICIONAR ALUNO
-          </button>
-        </div>
+      <div className="flex gap-4 border-b border-white/5 mb-6">
+        <button onClick={() => setActiveTab('students')} className={cn("px-4 py-3 font-bold text-sm", activeTab === 'students' ? "text-[#F74C00] border-b-2 border-[#F74C00]" : "text-gray-500")}>ALUNOS</button>
+        <button onClick={() => setActiveTab('clans')} className={cn("px-4 py-3 font-bold text-sm", activeTab === 'clans' ? "text-[#F74C00] border-b-2 border-[#F74C00]" : "text-gray-500")}>CLÃS</button>
       </div>
 
-      {/* Filters & Search */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex-1 min-w-[300px] relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-          <input 
-            type="text" 
-            placeholder="Buscar por nome, turma ou status..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#151518] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
-          />
-        </div>
-        <button className="px-4 py-3 bg-[#151518] border border-white/5 rounded-xl text-gray-400 hover:text-white flex items-center gap-2 transition-all">
-          <Filter size={18} />
-          Filtros
-        </button>
-      </div>
-
-      <div className="bg-[#151518] border border-white/5 rounded-3xl overflow-hidden">
-        <div className="w-full overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-white/5 bg-white/[0.02]">
-                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">ID</th>
-                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Aluno</th>
-                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Clã</th>
-                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Nível</th>
-                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Conquistas</th>
-                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Status</th>
-                <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest text-right whitespace-nowrap">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <Loader2 className="w-8 h-8 text-[#F74C00] animate-spin mx-auto" />
-                  </td>
-                </tr>
-              ) : filteredStudents.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                    Nenhum aluno encontrado.
-                  </td>
-                </tr>
-              ) : (
-                filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-4 py-4">
-                      <span className="font-mono text-xs text-gray-400">{student.uniqueId}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="hidden sm:block">
-                          <StudentAvatar 
-                            src={student.profilePhoto}
-                            firstName={student.firstName}
-                            lastName={student.lastName}
-                            gender={student.gender}
-                            characterId={student.characterId}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-white text-xs md:text-sm truncate">{student.firstName} {student.lastName}</p>
-                          <p className="text-[9px] md:text-[10px] text-gray-500 font-mono truncate">{student.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[10px] md:text-xs font-semibold text-gray-300 whitespace-nowrap">
-                        {student.class}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-[#FFDA1F]/10 flex items-center justify-center text-[#FFDA1F] text-[10px] md:text-xs font-black">
-                          {student.level}
-                        </div>
-                        <div className="w-12 lg:w-24 h-1 bg-[#0A0A0B] rounded-full overflow-hidden hidden lg:block">
-                          <div className="h-full bg-gradient-to-r from-[#F74C00] to-[#FFDA1F]" style={{ width: `${Math.min(100, (student.level || 0) * 10)}%` }}></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <button 
-                        onClick={() => setIsAssigningAchievements(student)}
-                        className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs font-bold text-[#F74C00] hover:underline whitespace-nowrap"
-                      >
-                        <Trophy size={12} />
-                        {student.achievements?.length || 0} <span className="hidden sm:inline">Conquistas</span>
-                      </button>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className={cn(
-                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
-                        student.status === 'active' ? "bg-emerald-500/10 text-emerald-500" : "bg-gray-500/10 text-gray-500"
-                      )}>
-                        <span className={cn("w-1 h-1 rounded-full", student.status === 'active' ? "bg-emerald-500" : "bg-gray-500")}></span>
-                        {student.status === 'active' ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1 transition-opacity">
-                        <button 
-                          onClick={() => openModal(student, true)}
-                          className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-                          title="Editar"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(student.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-500/5 rounded-lg transition-all"
-                          title="Excluir"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+          {activeTab === 'clans' ? <ClanManagement /> : (
+        <>
+          <div className="flex flex-row items-center justify-between gap-4">
+            <div className="flex-1">
+              <h2 className="text-2xl md:text-3xl font-display font-black tracking-tight">GESTÃO DE ALUNOS</h2>
+              <p className="text-gray-500 mt-1 text-xs md:text-sm hidden sm:block">Gerencie jogadores, atribua conquistas e acompanhe o progresso.</p>
+            </div>
+            <div className="flex items-center gap-2 md:gap-3">
+              {isAdmin && (
+                adminStudent ? (
+                  <button 
+                    onClick={() => setIsAssigningAchievements(adminStudent)}
+                    className="bg-white/5 hover:bg-white/10 text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 border border-white/10 text-[10px] md:text-sm whitespace-nowrap"
+                  >
+                    <Trophy size={16} className="text-[#F74C00]" />
+                    <span className="hidden xs:inline">MINHAS CONQUISTAS</span>
+                    <span className="xs:hidden">CONQUISTAS</span>
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => openModal({
+                      firstName: user?.user_metadata?.full_name?.split(' ')[0] || 'Admin',
+                      lastName: user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+                      email: user?.email,
+                      class: 'Administração',
+                      birthDate: new Date().toISOString().split('T')[0],
+                      gender: 'male',
+                      status: 'active'
+                    })}
+                    className="bg-white/5 hover:bg-white/10 text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 border border-white/10 text-[10px] md:text-sm whitespace-nowrap"
+                  >
+                    <User size={16} className="text-[#F74C00]" />
+                    ATIVAR PERFIL
+                  </button>
+                )
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              <button 
+                onClick={() => openModal()}
+                className="bg-[#F74C00] hover:bg-[#ff5a14] text-white px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-500/20 text-[10px] md:text-sm whitespace-nowrap"
+              >
+                <Plus size={16} />
+                ADICIONAR ALUNO
+              </button>
+            </div>
+          </div>
+
+          {/* Filters & Search */}
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-[300px] relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+              <input 
+                type="text" 
+                placeholder="Buscar por nome, turma ou status..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#151518] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
+              />
+            </div>
+            <button className="px-4 py-3 bg-[#151518] border border-white/5 rounded-xl text-gray-400 hover:text-white flex items-center gap-2 transition-all">
+              <Filter size={18} />
+              Filtros
+            </button>
+          </div>
+
+          <div className="bg-[#151518] border border-white/5 rounded-3xl overflow-hidden">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/5 bg-white/[0.02]">
+                    <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">ID</th>
+                    <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Aluno</th>
+                    <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Clã</th>
+                    <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Nível</th>
+                    <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Conquistas</th>
+                    <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Status</th>
+                    <th className="px-4 py-4 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest text-right whitespace-nowrap">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <Loader2 className="w-8 h-8 text-[#F74C00] animate-spin mx-auto" />
+                      </td>
+                    </tr>
+                  ) : filteredStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                        Nenhum aluno encontrado.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStudents.map((student) => (
+                      <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">
+                        <td className="px-4 py-4">
+                          <span className="font-mono text-xs text-gray-400">{student.uniqueId}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="hidden sm:block">
+                              <StudentAvatar 
+                                src={student.profilePhoto}
+                                firstName={student.firstName}
+                                lastName={student.lastName}
+                                gender={student.gender}
+                                characterId={student.characterId}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-white text-xs md:text-sm truncate">{student.firstName} {student.lastName}</p>
+                              <p className="text-[9px] md:text-[10px] text-gray-500 font-mono truncate">{student.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[10px] md:text-xs font-semibold text-gray-300 whitespace-nowrap">
+                            {student.class}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-[#FFDA1F]/10 flex items-center justify-center text-[#FFDA1F] text-[10px] md:text-xs font-black">
+                              {student.level}
+                            </div>
+                            <div className="w-12 lg:w-24 h-1 bg-[#0A0A0B] rounded-full overflow-hidden hidden lg:block">
+                              <div className="h-full bg-gradient-to-r from-[#F74C00] to-[#FFDA1F]" style={{ width: `${Math.min(100, (student.level || 0) * 10)}%` }}></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <button 
+                            onClick={() => setIsAssigningAchievements(student)}
+                            className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs font-bold text-[#F74C00] hover:underline whitespace-nowrap"
+                          >
+                            <Trophy size={12} />
+                            {student.achievements?.length || 0} <span className="hidden sm:inline">Conquistas</span>
+                          </button>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={cn(
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
+                            student.status === 'active' ? "bg-emerald-500/10 text-emerald-500" : "bg-gray-500/10 text-gray-500"
+                          )}>
+                            <span className={cn("w-1 h-1 rounded-full", student.status === 'active' ? "bg-emerald-500" : "bg-gray-500")}></span>
+                            {student.status === 'active' ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1 transition-opacity">
+                            <button 
+                              onClick={() => openModal(student, true)}
+                              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                              title="Editar"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(student.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-500/5 rounded-lg transition-all"
+                              title="Excluir"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Student Modal */}
       <AnimatePresence>
@@ -602,12 +632,16 @@ export function StudentManagement() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Clã</label>
-                    <input 
-                      {...register('class')}
-                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"
-                      placeholder="ex: Futebol Sub-15"
-                    />
-                    {errors.class && <p className="text-red-500 text-[10px]">{errors.class.message}</p>}
+                    <select 
+                      {...register('clan_id')}
+                      className="w-full bg-[#0A0A0B] border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all appearance-none"
+                    >
+                      <option value="">Selecione um clã</option>
+                      {clans.map(clan => (
+                        <option key={clan.id} value={clan.id}>{clan.name}</option>
+                      ))}
+                    </select>
+                    {errors.clan_id && <p className="text-red-500 text-[10px]">{errors.clan_id.message}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest">Data de Nascimento</label>

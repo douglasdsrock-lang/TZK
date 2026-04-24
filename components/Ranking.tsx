@@ -34,7 +34,7 @@ export function Ranking({ themeColor }: { themeColor: string }) {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('*')
+        .select('*, clans(name, icon)')
         .order('level', { ascending: false })
         .order('created_at', { ascending: true }); // Secondary sort
 
@@ -46,7 +46,7 @@ export function Ranking({ themeColor }: { themeColor: string }) {
         firstName: s.first_name,
         lastName: s.last_name,
         email: s.email,
-        class: s.class,
+        clan: s.clans,
         level: s.level,
         gender: s.gender,
         characterId: s.character_id,
@@ -134,13 +134,14 @@ export function Ranking({ themeColor }: { themeColor: string }) {
         <div className="space-y-8">
           {/* Ranking List */}
           <div className="bg-[#151518] border border-white/5 rounded-3xl overflow-hidden">
-            <div className="hidden md:grid grid-cols-[80px_1fr_120px_120px] px-8 py-4 bg-white/[0.02] border-b border-white/5">
+            <div className="hidden md:grid grid-cols-[80px_1fr_120px_120px_120px] px-8 py-4 bg-white/[0.02] border-b border-white/5 items-center gap-4">
               <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">Pos</span>
               <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">Jogador</span>
+              <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest text-center">Clã</span>
               <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest text-center">Nível</span>
               <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest text-center">Conquistas</span>
             </div>
-
+            
             <div className="divide-y divide-white/5">
               {filteredStudents.map((student, index) => {
                 const isCurrentUser = student.email === user?.email;
@@ -163,7 +164,7 @@ export function Ranking({ themeColor }: { themeColor: string }) {
                       borderColor: isCurrentUser ? `${themeColor}33` : undefined
                     }}
                   >
-                    <div className="grid grid-cols-[50px_1fr_auto] md:grid-cols-[80px_1fr_120px_120px] items-center px-4 md:px-8 py-4 gap-4">
+                    <div className="grid grid-cols-[50px_1fr_auto] md:grid-cols-[80px_1fr_120px_120px_120px] items-center px-4 md:px-8 py-4 gap-4">
                       {/* Position */}
                       <div className="flex items-center gap-2">
                         <span className={cn(
@@ -198,10 +199,16 @@ export function Ranking({ themeColor }: { themeColor: string }) {
                           >
                             {student.firstName} {student.lastName} {isCurrentUser && "(VOCÊ)"}
                           </p>
-                          <p className="text-[10px] font-mono text-gray-500 uppercase truncate">
-                            {student.class}
-                          </p>
                         </div>
+                      </div>
+
+                      {/* Clan */}
+                      <div className="hidden md:flex justify-center items-center">
+                        {student.clan?.icon ? (
+                          <img src={student.clan.icon} alt={student.clan.name} className="w-8 h-8 object-contain" />
+                        ) : (
+                          <span className="text-xs font-mono text-gray-500">-</span>
+                        )}
                       </div>
 
                       {/* Level & Achievements (Mobile: Compact, Desktop: Columns) */}

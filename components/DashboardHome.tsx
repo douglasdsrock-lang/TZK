@@ -98,7 +98,7 @@ export function DashboardHome({
       // 1. Fetch student data
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('*')
+        .select('*, clans(name, icon)')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -138,7 +138,7 @@ export function DashboardHome({
         firstName: finalStudent.first_name,
         lastName: finalStudent.last_name,
         email: finalStudent.email,
-        class: finalStudent.class,
+        clan: finalStudent.clans,
         level: finalStudent.level,
         gender: finalStudent.gender,
         characterId: finalStudent.character_id,
@@ -391,8 +391,9 @@ export function DashboardHome({
     },
     { 
       label: 'Clã', 
-      value: studentData?.class || 'Sem Clã', 
-      icon: Sword, 
+      value: studentData?.clan?.name || 'Sem Clã', 
+      icon: Sword,
+      customIcon: studentData?.clan?.icon?.startsWith('data:image') ? studentData.clan.icon : null,
       color: themeColor
     },
   ];
@@ -579,7 +580,11 @@ export function DashboardHome({
               className="relative z-10 w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform"
               style={{ color: stat.color }}
             >
-              <stat.icon size={28} />
+              {stat.customIcon ? (
+                <img src={stat.customIcon} alt="Clã" className="w-8 h-8 object-contain" />
+              ) : (
+                <stat.icon size={28} />
+              )}
             </div>
             <div className="relative z-10">
               <p className="text-xs font-mono font-bold text-gray-400 uppercase tracking-widest">{stat.label}</p>
