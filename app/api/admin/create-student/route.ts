@@ -90,6 +90,7 @@ export async function POST(req: Request) {
       level: 1,
       experience: 0,
       status: studentData.status || 'active',
+      clan_id: studentData.clan_id || null,
       class: studentData.class || null,
       birth_date: studentData.birth_date || null,
       entry_date: studentData.entry_date || null,

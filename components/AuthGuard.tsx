@@ -27,7 +27,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       
       if (sessionUser) {
         // Check if user is admin via hardcoded fallback or DB role
-        const isHardcodedAdmin = sessionUser.email === 'agencia.unrocket@gmail.com' || sessionUser.id === 'OMCUqpvEF9Zjg28ivP95zosy0zJ3';
+        const isHardcodedAdmin = sessionUser.email === 'agencia.unrocket@gmail.com' || sessionUser.email === 'geracaotzk@gmail.com' || sessionUser.id === 'OMCUqpvEF9Zjg28ivP95zosy0zJ3';
         
         const { data: studentData } = await supabase
           .from('students')

@@ -33,7 +33,7 @@ const studentSchema = z.object({
   firstName: z.string().min(2, 'Nome muito curto'),
   lastName: z.string().min(2, 'Sobrenome muito curto'),
   email: z.string().email('Email inválido'),
-  clan_id: z.string().nullable().optional(), // Alterado de class para clan_id
+  clan_id: z.string().nullable().optional(),
   birthDate: z.string().min(1, 'Data de nascimento é obrigatória'),
   entryDate: z.string().min(1, 'Data de entrada é obrigatória'),
   uniqueId: z.string().min(1, 'ID único é obrigatório'),

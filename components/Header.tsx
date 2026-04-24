@@ -154,7 +154,7 @@ export function Header({ setActiveTab, toggleSidebar, themeColor }: HeaderProps)
                             LIMPAR TUDO
                           </button>
                         )}
-                        {user?.email === 'agencia.unrocket@gmail.com' && (
+                        {(user?.email === 'agencia.unrocket@gmail.com' || user?.email === 'geracaotzk@gmail.com') && (
                           <button 
                             onClick={async () => {
                               try {

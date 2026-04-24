@@ -62,6 +62,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         (request.auth.token.email == "agencia.unrocket@gmail.com" || 
+         request.auth.token.email == "geracaotzk@gmail.com" ||
          request.auth.uid == "OMCUqpvEF9Zjg28ivP95zosy0zJ3");
     }
 
