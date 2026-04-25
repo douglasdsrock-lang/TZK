@@ -33,6 +33,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.geracaotzk.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   // Force rebuild to include public assets

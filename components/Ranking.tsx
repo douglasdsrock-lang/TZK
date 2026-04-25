@@ -286,12 +286,10 @@ export function Ranking({ themeColor }: { themeColor: string }) {
                               transition={{ delay: 0.2, type: "spring", damping: 15 }}
                               className="relative z-10 w-full h-full"
                             >
-                              <Image 
-                                src={char.fullImage}
-                                alt={char.name}
-                                fill
-                                className="object-contain object-bottom p-4"
-                              />
+                              <picture className="absolute inset-0 w-full h-full p-4">
+                                <source srcSet={char.fullImage} type="image/avif" />
+                                <img src={char.fullImageFallback} alt={char.name} className="w-full h-full object-contain object-bottom" />
+                              </picture>
                             </motion.div>
                           </>
                         );

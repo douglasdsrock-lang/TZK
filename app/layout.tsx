@@ -6,6 +6,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://app.geracaotzk.com'),
   title: "TZK Dashboard",
   description: "Plataforma de gamificação para alunos.",
   manifest: "/manifest.json",

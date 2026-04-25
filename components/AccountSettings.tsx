@@ -47,7 +47,9 @@ export function AccountSettings() {
           const mappedData = {
             ...student,
             firstName: student.first_name,
-            lastName: student.last_name
+            lastName: student.last_name,
+            birthDate: student.birth_date,
+            entryDate: student.entry_date
           };
           setUserData(mappedData);
           setEmail(student.email || user.email || '');
@@ -65,7 +67,9 @@ export function AccountSettings() {
             const mappedData = {
               ...studentByEmail,
               firstName: studentByEmail.first_name,
-              lastName: studentByEmail.last_name
+              lastName: studentByEmail.last_name,
+              birthDate: studentByEmail.birth_date,
+              entryDate: studentByEmail.entry_date
             };
             setUserData(mappedData);
             setEmail(studentByEmail.email || user.email || '');
@@ -194,13 +198,20 @@ export function AccountSettings() {
               className="w-24 h-24 rounded-2xl p-1 mb-4 relative overflow-hidden"
               style={{ background: `linear-gradient(to bottom right, ${themeColor}, #FFDA1F)` }}
             >
-              <Image 
-                src={selectedCharacter?.profileImage || userData?.profilePhoto || getAvatarUrl(`${userData?.firstName} ${userData?.lastName}`)} 
-                alt={userData?.firstName || 'User'}
-                fill
-                unoptimized={true}
-                className="object-cover rounded-[14px]"
-              />
+              {selectedCharacter ? (
+                <picture className="absolute inset-[4px] w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-[14px] overflow-hidden">
+                  <source srcSet={selectedCharacter.profileImage} type="image/webp" />
+                  <img src={selectedCharacter.profileImageFallback} alt={userData?.firstName || 'User'} className="w-full h-full object-cover" />
+                </picture>
+              ) : (
+                <Image 
+                  src={userData?.profilePhoto || getAvatarUrl(`${userData?.firstName} ${userData?.lastName}`)} 
+                  alt={userData?.firstName || 'User'}
+                  fill
+                  unoptimized={true}
+                  className="object-cover rounded-[14px]"
+                />
+              )}
             </div>
             <h3 className="text-xl font-bold text-white">
               {userData?.firstName} {userData?.lastName}
@@ -217,6 +228,13 @@ export function AccountSettings() {
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase font-mono">Nascimento</p>
                   <p className="text-gray-300">{formatDate(userData?.birthDate)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <Calendar style={{ color: themeColor }} size={16} />
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase font-mono">Data de Entrada</p>
+                  <p className="text-gray-300">{formatDate(userData?.entryDate)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 text-sm">
@@ -289,12 +307,10 @@ export function AccountSettings() {
                     boxShadow: selectedCharacterId === char.id ? `0 0 15px ${char.color}4D` : 'none'
                   }}
                 >
-                  <Image 
-                    src={char.profileImage}
-                    alt={char.name}
-                    fill
-                    className="object-cover"
-                  />
+                  <picture className="absolute inset-0 w-full h-full">
+                    <source srcSet={char.profileImage} type="image/webp" />
+                    <img src={char.profileImageFallback} alt={char.name} className="w-full h-full object-cover" />
+                  </picture>
                   {selectedCharacterId === char.id && (
                     <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: `${char.color}33` }}>
                       <CheckCircle2 className="text-white" size={24} />

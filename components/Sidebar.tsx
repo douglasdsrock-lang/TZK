@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { 
   Home, 
   Trophy, 
@@ -173,13 +174,14 @@ export function Sidebar({
         )}>
           <div className="flex items-center gap-3">
             <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shrink-0"
-              style={{ 
-                background: `linear-gradient(to bottom right, ${themeColor}, #FFDA1F)`,
-                boxShadow: `0 5px 15px ${themeColor}33`
-              }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 relative"
             >
-              <LayoutDashboard className="text-black" size={24} />
+              <Image 
+                src="https://www.geracaotzk.com/Assets/logotipo.png"
+                alt="TZK Logo"
+                fill
+                className="object-contain"
+              />
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">

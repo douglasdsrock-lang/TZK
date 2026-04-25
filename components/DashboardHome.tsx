@@ -497,15 +497,10 @@ export function DashboardHome({
             <div className="w-24 h-24 md:w-32 md:h-32 bg-[#0A0A0B] rounded-2xl border border-white/10 flex items-center justify-center overflow-visible">
               {character ? (
                 <div className="relative w-full h-full">
-                  <Image 
-                    src={character.fullImage}
-                    alt={character.name}
-                    width={240}
-                    height={240}
-                    unoptimized={true}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] max-w-none h-auto z-[991] pointer-events-none"
-                    style={{ filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.8))' }}
-                  />
+                  <picture className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] max-w-none h-auto z-[991] pointer-events-none" style={{ filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.8))' }}>
+                    <source srcSet={character.fullImage} type="image/avif" />
+                    <img src={character.fullImageFallback} alt={character.name} className="w-full h-auto" />
+                  </picture>
                 </div>
               ) : (
                 <StudentAvatar 

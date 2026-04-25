@@ -41,13 +41,10 @@ export function CharacterSpeech({ characterId, message }: CharacterSpeechProps) 
         animate={{ opacity: 1, y: 0 }}
         className="w-32 h-48 md:w-48 md:h-72 relative shrink-0"
       >
-        <Image
-          src={character.fullImage}
-          alt={character.name}
-          fill
-          unoptimized={true}
-          className="object-contain object-bottom"
-        />
+        <picture className="absolute inset-0 w-full h-full">
+          <source srcSet={character.fullImage} type="image/avif" />
+          <img src={character.fullImageFallback} alt={character.name} className="w-full h-full object-contain object-bottom" />
+        </picture>
       </motion.div>
     </div>
   );

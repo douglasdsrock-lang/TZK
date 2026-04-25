@@ -49,13 +49,10 @@ export function StudentAvatar({ firstName, lastName, gender, characterId, classN
         )}
         style={{ borderColor: `${themeColor}4D` }}
       >
-        <Image 
-          src={character.profileImage}
-          alt={character.name}
-          fill
-          unoptimized={true}
-          className="object-cover"
-        />
+        <picture className="absolute inset-0 w-full h-full">
+          <source srcSet={character.profileImage} type="image/webp" />
+          <img src={character.profileImageFallback} alt={character.name} className="w-full h-full object-cover" />
+        </picture>
       </div>
     );
   }
