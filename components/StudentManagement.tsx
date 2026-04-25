@@ -156,7 +156,7 @@ export function StudentManagement() {
       student.firstName?.toLowerCase().includes(searchLower) ||
       student.lastName?.toLowerCase().includes(searchLower) ||
       student.email?.toLowerCase().includes(searchLower) ||
-      student.class?.toLowerCase().includes(searchLower) ||
+      student.clan?.name?.toLowerCase().includes(searchLower) ||
       student.status?.toLowerCase().includes(searchLower)
     );
   });
@@ -466,7 +466,7 @@ export function StudentManagement() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
               <input 
                 type="text" 
-                placeholder="Buscar por nome, turma ou status..." 
+                placeholder="Buscar por nome, clã ou status..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-[#151518] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-[#F74C00]/50 transition-all"

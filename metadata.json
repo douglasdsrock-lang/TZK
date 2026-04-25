@@ -1,5 +1,6 @@
 {
-  "name": "EduQuest: Gamified Student Dashboard",
+  "name": "TZK Area do aluno",
   "description": "A gamified educational dashboard for students to track progress, complete missions, and earn achievements.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }
