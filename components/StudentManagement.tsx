@@ -14,7 +14,9 @@ import {
   Check,
   Loader2,
   MoreVertical,
-  Filter
+  Filter,
+  Shield,
+  Sword
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useForm } from 'react-hook-form';
@@ -532,8 +534,15 @@ export function StudentManagement() {
                           {student.clan ? (
                             <div className="flex items-center gap-2">
                               {student.clan.icon && (
-                                <div className="w-5 h-5 relative rounded-full overflow-hidden bg-white/5 flex-shrink-0">
-                                  <Image src={student.clan.icon} alt={student.clan.name} fill className="object-cover" />
+                                <div className="w-5 h-5 relative rounded-full overflow-hidden bg-white/5 flex-shrink-0 flex items-center justify-center">
+                                  {(student.clan.icon.startsWith('data:image') || student.clan.icon.startsWith('http')) ? (
+                                    <img src={student.clan.icon} alt={student.clan.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    student.clan.icon === 'Users' ? <Users size={12} className="text-gray-400" /> :
+                                    student.clan.icon === 'Sword' ? <Sword size={12} className="text-gray-400" /> :
+                                    student.clan.icon === 'Trophy' ? <Trophy size={12} className="text-gray-400" /> :
+                                    <Shield size={12} className="text-gray-400" />
+                                  )}
                                 </div>
                               )}
                               <span className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[10px] md:text-xs font-semibold text-gray-300 whitespace-nowrap">

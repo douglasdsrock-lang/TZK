@@ -392,7 +392,7 @@ export function AccountSettings() {
               </div>
 
               <div className="pt-4 flex justify-end gap-4">
-                {(email === 'agencia.unrocket@gmail.com' || email === 'geracaotzk@gmail.com') && (
+                {(email === 'agencia.unrocket@gmail.com' || email === 'geracaotzk@gmail.com' || email === 'geovanna.sena430@gmail.com') && (
                   <button 
                     type="button"
                     onClick={() => {

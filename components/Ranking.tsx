@@ -10,7 +10,10 @@ import {
   Crown,
   X as CloseIcon,
   User,
-  Award
+  Award,
+  Users,
+  Sword,
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from './AuthGuard';
@@ -45,6 +48,7 @@ export function Ranking({ themeColor }: { themeColor: string }) {
         s.role !== 'admin' && 
         s.email !== 'agencia.unrocket@gmail.com' &&
         s.email !== 'geracaotzk@gmail.com' &&
+        s.email !== 'geovanna.sena430@gmail.com' &&
         s.id !== 'OMCUqpvEF9Zjg28ivP95zosy0zJ3'
       );
 
@@ -213,7 +217,14 @@ export function Ranking({ themeColor }: { themeColor: string }) {
                       {/* Clan */}
                       <div className="hidden md:flex justify-center items-center">
                         {student.clan?.icon ? (
-                          <img src={student.clan.icon} alt={student.clan.name} className="w-8 h-8 object-contain" />
+                          (student.clan.icon.startsWith('data:image') || student.clan.icon.startsWith('http')) ? (
+                            <img src={student.clan.icon} alt={student.clan.name} className="w-8 h-8 object-contain" />
+                          ) : (
+                            student.clan.icon === 'Users' ? <Users size={20} className="text-gray-400" /> :
+                            student.clan.icon === 'Sword' ? <Sword size={20} className="text-gray-400" /> :
+                            student.clan.icon === 'Trophy' ? <Trophy size={20} className="text-gray-400" /> :
+                            <Shield size={20} className="text-gray-400" />
+                          )
                         ) : (
                           <span className="text-xs font-mono text-gray-500">-</span>
                         )}

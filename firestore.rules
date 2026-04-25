@@ -63,6 +63,7 @@ service cloud.firestore {
       return isAuthenticated() && 
         (request.auth.token.email == "agencia.unrocket@gmail.com" || 
          request.auth.token.email == "geracaotzk@gmail.com" ||
+         request.auth.token.email == "geovanna.sena430@gmail.com" ||
          request.auth.uid == "OMCUqpvEF9Zjg28ivP95zosy0zJ3");
     }
 
