@@ -40,8 +40,16 @@ export function Ranking({ themeColor }: { themeColor: string }) {
 
       if (error) throw error;
       
+      // Filter out admin accounts
+      const filteredData = (data || []).filter(s => 
+        s.role !== 'admin' && 
+        s.email !== 'agencia.unrocket@gmail.com' &&
+        s.email !== 'geracaotzk@gmail.com' &&
+        s.id !== 'OMCUqpvEF9Zjg28ivP95zosy0zJ3'
+      );
+
       // Map snake_case from Postgres to camelCase for the UI
-      const mappedData = (data || []).map(s => ({
+      const mappedData = filteredData.map(s => ({
         id: s.id,
         firstName: s.first_name,
         lastName: s.last_name,

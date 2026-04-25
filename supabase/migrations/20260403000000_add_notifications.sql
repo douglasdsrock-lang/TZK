@@ -22,7 +22,7 @@ CREATE POLICY "Users can insert notifications for themselves"
     WITH CHECK (
         auth.uid() = user_id OR
         auth.jwt() ->> 'email' = 'agencia.unrocket@gmail.com' OR
-        auth.uid() = 'OMCUqpvEF9Zjg28ivP95zosy0zJ3'
+        auth.jwt() ->> 'email' = 'geracaotzk@gmail.com'
     );
 
 CREATE POLICY "Users can update their own notifications (mark as read)"

@@ -67,16 +67,16 @@ ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 
 -- POLÍTICAS PARA CATEGORIES
 CREATE POLICY "Admin total access categories" ON public.categories FOR ALL 
-USING (auth.jwt() ->> 'email' = 'agencia.unrocket@gmail.com');
+USING (auth.jwt() ->> 'email' = 'agencia.unrocket@gmail.com' OR auth.jwt() ->> 'email' = 'geracaotzk@gmail.com');
 CREATE POLICY "Public read categories" ON public.categories FOR SELECT USING (true);
 
 -- POLÍTICAS PARA ACHIEVEMENTS
 CREATE POLICY "Admin total access achievements" ON public.achievements FOR ALL 
-USING (auth.jwt() ->> 'email' = 'agencia.unrocket@gmail.com');
+USING (auth.jwt() ->> 'email' = 'agencia.unrocket@gmail.com' OR auth.jwt() ->> 'email' = 'geracaotzk@gmail.com');
 CREATE POLICY "Public read achievements" ON public.achievements FOR SELECT USING (true);
 
 -- POLÍTICAS PARA STUDENTS
 CREATE POLICY "Admin total access students" ON public.students FOR ALL 
-USING (auth.jwt() ->> 'email' = 'agencia.unrocket@gmail.com');
+USING (auth.jwt() ->> 'email' = 'agencia.unrocket@gmail.com' OR auth.jwt() ->> 'email' = 'geracaotzk@gmail.com');
 CREATE POLICY "Students view own profile" ON public.students FOR SELECT 
 USING (auth.uid() = id);

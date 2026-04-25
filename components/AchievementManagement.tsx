@@ -72,10 +72,10 @@ const achievementSchema = z.object({
   name: z.string().min(2, 'Nome muito curto'),
   description: z.string().min(5, 'Descrição muito curta'),
   icon: z.string().min(1, 'Ícone é obrigatório'),
-  category: z.string().optional().or(z.literal('')),
-  level: z.number().min(0, 'Nível de recompensa inválido'),
+  category: z.string().nullable().optional(),
+  level: z.coerce.number().min(0, 'Nível de recompensa inválido').default(0),
   type: z.enum(['standard', 'level']),
-  requiredLevel: z.number().default(0),
+  requiredLevel: z.coerce.number().default(0),
 }).refine((data) => {
   if (data.type === 'standard' && (!data.category || data.category === '')) {
     return false;
