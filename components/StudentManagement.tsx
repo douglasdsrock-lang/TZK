@@ -75,7 +75,7 @@ export function StudentManagement() {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('*')
+        .select('*, clans(name, icon)')
         .order('first_name', { ascending: true });
 
       if (error) throw error;
@@ -94,7 +94,9 @@ export function StudentManagement() {
         status: s.status,
         notes: s.notes,
         level: s.level,
-        achievements: s.achievements || []
+        achievements: s.achievements || [],
+        clan_id: s.clan_id,
+        clan: s.clans
       }));
 
       setStudents(mapped);
@@ -184,7 +186,7 @@ export function StudentManagement() {
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,
-        clan_id: data.clan_id,
+        clan_id: data.clan_id === '' ? null : data.clan_id,
         birth_date: data.birthDate,
         entry_date: data.entryDate,
         unique_id: data.uniqueId,
@@ -338,15 +340,21 @@ export function StudentManagement() {
     const { data } = await supabase
       .from('students')
       .select('unique_id')
-      .like('unique_id', 'tzk%')
-      .order('unique_id', { ascending: false })
-      .limit(1);
+      .like('unique_id', 'tzk%');
 
-    if (data && data.length > 0 && data[0].unique_id) {
-      const currentId = parseInt(data[0].unique_id.replace('tzk', ''));
-      return `tzk${String(currentId + 1).padStart(3, '0')}`;
+    let maxId = 100;
+    if (data && data.length > 0) {
+      data.forEach(student => {
+        if (student.unique_id) {
+          const num = parseInt(student.unique_id.replace('tzk', ''), 10);
+          if (!isNaN(num) && num > maxId) {
+            maxId = num;
+          }
+        }
+      });
     }
-    return 'tzk101';
+    
+    return `tzk${String(maxId + 1).padStart(3, '0')}`;
   };
 
   const generatePassword = () => {
@@ -521,9 +529,20 @@ export function StudentManagement() {
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <span className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[10px] md:text-xs font-semibold text-gray-300 whitespace-nowrap">
-                            {student.class}
-                          </span>
+                          {student.clan ? (
+                            <div className="flex items-center gap-2">
+                              {student.clan.icon && (
+                                <div className="w-5 h-5 relative rounded-full overflow-hidden bg-white/5 flex-shrink-0">
+                                  <Image src={student.clan.icon} alt={student.clan.name} fill className="object-cover" />
+                                </div>
+                              )}
+                              <span className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-[10px] md:text-xs font-semibold text-gray-300 whitespace-nowrap">
+                                {student.clan.name}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-gray-500 italic">Sem clã</span>
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
